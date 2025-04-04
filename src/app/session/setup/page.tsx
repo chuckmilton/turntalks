@@ -44,7 +44,7 @@ export default function SessionSetupPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-4 bg-white shadow rounded">
+    <div className="max-w-xl mx-auto p-4 bg-white shadow rounded text-gray-700">
       <h2 className="text-2xl font-bold mb-4">Session Setup</h2>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">

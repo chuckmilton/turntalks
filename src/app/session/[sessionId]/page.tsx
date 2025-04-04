@@ -32,7 +32,7 @@ export default function SessionPage() {
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [loadingQuestion, setLoadingQuestion] = useState<boolean>(false);
   const [timerKey, setTimerKey] = useState<number>(0); // used to reset Timer
-  const [answerStarted, setAnswerStarted] = useState<boolean>(false); // controls when answer starts
+  const [answerStarted, setAnswerStarted] = useState<boolean>(false); // controls answer UI visibility
 
   // Fetch session details from Supabase on mount.
   useEffect(() => {
@@ -73,6 +73,7 @@ export default function SessionPage() {
   // Handle answer submission from SpeechToText component.
   const handleAnswer = async (answerText: string) => {
     if (!session) return;
+
     // Append the new answer.
     const newAnswers = [
       ...(session.answers || []),
@@ -81,15 +82,18 @@ export default function SessionPage() {
 
     // Calculate how many questions have been completed so far.
     const questionsCompleted = Math.floor(newAnswers.length / session.participants.length);
-
-    // If we've reached or exceeded the number of questions, finish the session.
+    // If reached or exceeded total desired questions, finish session.
     if (questionsCompleted >= session.num_questions) {
-      const { error } = await supabase
+      const { data: finishedSession, error } = await supabase
         .from('sessions')
         .update({ answers: newAnswers, status: 'finished' })
-        .eq('id', sessionId);
+        .eq('id', sessionId)
+        .select('*')
+        .single();
       if (error) {
         alert(error.message);
+      } else {
+        setSession(finishedSession);
       }
       router.push(`/conclusion/${sessionId}`);
       return;
@@ -97,8 +101,7 @@ export default function SessionPage() {
 
     let newQuestion = currentQuestion;
     let newTurn = currentTurn;
-
-    // If current participant is the last in the list, generate the next question.
+    // If the current participant is the last in the list, generate a new question.
     if (currentTurn >= session.participants.length - 1) {
       newTurn = 0;
       setLoadingQuestion(true);
@@ -108,27 +111,28 @@ export default function SessionPage() {
         alert(err.message);
       }
       setLoadingQuestion(false);
-      setCurrentQuestion(newQuestion);
     } else {
       newTurn = currentTurn + 1;
     }
 
-    // Update the session record in Supabase.
-    const { error } = await supabase
+    // Update the session record in Supabase and re-fetch the updated record.
+    const { data: updatedSession, error } = await supabase
       .from('sessions')
       .update({ answers: newAnswers, current_question: newQuestion })
-      .eq('id', sessionId);
+      .eq('id', sessionId)
+      .select('*')
+      .single();
     if (error) {
       alert(error.message);
       return;
     }
-
-    // Update local state.
-    setSession({ ...session, answers: newAnswers, current_question: newQuestion });
+    // Update local state with the updated session.
+    setSession(updatedSession);
     setCurrentTurn(newTurn);
     setLiveTranscript('');
-    setTimerKey(prev => prev + 1); // Reset Timer
-    setAnswerStarted(false); // Require user to click "Start Answer" for next turn.
+    setTimerKey(prev => prev + 1); // reset Timer
+    setAnswerStarted(false); // require new "Start Answer" click for next turn.
+    setCurrentQuestion(updatedSession.current_question);
   };
 
   // Callback when the timer finishes (auto end the answer).
@@ -152,7 +156,9 @@ export default function SessionPage() {
     <div className="max-w-2xl mx-auto p-4 bg-white shadow rounded">
       <h2 className="text-2xl font-bold mb-4">Session {sessionId}</h2>
       <QuestionDisplay question={currentQuestion} />
-      <p className="mt-4 font-bold">Current Participant: {session.participants[currentTurn]}</p>
+      <p className="mt-4 font-bold">
+        Current Participant: {session.participants[currentTurn]}
+      </p>
       
       {!answerStarted ? (
         <button
@@ -167,7 +173,7 @@ export default function SessionPage() {
             <Timer initialTime={session.time_limit || 30} onTimeUp={handleTimeUp} key={timerKey} />
           </div>
           <div className="mt-4">
-            <SpeechToText onResult={(text) => setLiveTranscript(text)} />
+            <SpeechToText onResult={(text) => setLiveTranscript(text)} autoStart={true} />
             <p className="mt-2">Live Transcript: {liveTranscript}</p>
           </div>
           <button onClick={endAnswerManually} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded">
@@ -177,7 +183,6 @@ export default function SessionPage() {
       )}
 
       {loadingQuestion && <p className="mt-4">Generating next question...</p>}
-
       <button onClick={finishSession} className="mt-4 px-4 py-2 bg-red-500 text-white rounded">
         Finish Session
       </button>
