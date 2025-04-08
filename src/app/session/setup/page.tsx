@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabaseClient';
 import useRequireAuth from '@/hooks/useRequireAuth';
 
 function SessionSetupContent() {
+  useRequireAuth();
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId');
