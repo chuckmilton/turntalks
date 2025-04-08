@@ -9,12 +9,12 @@ import useRequireAuth from '@/hooks/useRequireAuth';
 export default function ConclusionPage() {
   useRequireAuth();
 
-  // Unwrap route parameters using useParams()
   const params = useParams();
   const { sessionId } = params as { sessionId: string };
   const [session, setSession] = useState<any>(null);
   const [summary, setSummary] = useState<string>('');
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
 
   // Function to auto-generate summary if it doesn't exist.
@@ -31,23 +31,29 @@ export default function ConclusionPage() {
       if (result.error) throw new Error(result.error);
       const summaryText = result.summary;
       setSummary(summaryText);
-      // Save summary to Supabase and mark session as finished (only if not already set).
-      if (!sessionData.summary) {
-        const { error } = await supabase
-          .from('sessions')
-          .update({ summary: summaryText, status: 'finished' })
-          .eq('id', sessionId);
-        if (error) {
-          alert(error.message);
-        }
+
+      // Retrieve current user id.
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      if (authError || !authData.session?.user) {
+        setErrorMessage("Authentication error. Please log in again.");
+        return;
+      }
+      const userId = authData.session.user.id;
+
+      // Save summary to Supabase including the user_id.
+      const { error } = await supabase
+        .from('sessions')
+        .update({ summary: summaryText, status: 'finished', user_id: userId })
+        .eq('id', sessionId);
+      if (error) {
+        setErrorMessage(error.message);
       }
     } catch (err: any) {
-      alert(err.message);
+      setErrorMessage(err.message);
     }
     setLoadingSummary(false);
   }
 
-  // Fetch session details on mount and auto-generate summary if missing.
   useEffect(() => {
     async function fetchSession() {
       const { data, error } = await supabase
@@ -56,13 +62,12 @@ export default function ConclusionPage() {
         .eq('id', sessionId)
         .single();
       if (error) {
-        alert(error.message);
+        setErrorMessage(error.message);
       } else {
         setSession(data);
         if (data.summary) {
           setSummary(data.summary);
         } else {
-          // Auto-generate summary only once if it's not present.
           await handleGenerateSummary(data);
         }
       }
@@ -74,9 +79,12 @@ export default function ConclusionPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
-      <h2 className="text-3xl font-bold mb-6 text-gray-800">
-        Session Summary: {sessionId}
-      </h2>
+      {errorMessage && (
+        <div className="mb-6 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
+          {errorMessage}
+        </div>
+      )}
+      <h2 className="text-3xl font-bold mb-6 text-gray-800">Session Summary</h2>
       {loadingSummary ? (
         <p className="mb-6 text-center text-gray-500 italic">Generating Summary...</p>
       ) : (

@@ -6,6 +6,10 @@ import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+function truncate(text: string, limit = 50) {
+  return text.length > limit ? text.substring(0, limit) + '...' : text;
+}
+
 export default function DashboardPage() {
   useRequireAuth();
 
@@ -14,7 +18,7 @@ export default function DashboardPage() {
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState<boolean>(false);
 
-  // Fetch sessions from Supabase
+  // Fetch sessions from Supabase.
   const fetchSessions = async () => {
     const { data, error } = await supabase
       .from('sessions')
@@ -40,7 +44,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Toggle "Select All"
+  // Toggle "Select All".
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedSessions([]);
@@ -74,7 +78,7 @@ export default function DashboardPage() {
     setSelectAll(false);
   };
 
-  // Logout handler
+  // Logout handler.
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -126,7 +130,8 @@ export default function DashboardPage() {
                     onChange={handleSelectAll}
                   />
                 </th>
-                <th className="border p-3">Session ID</th>
+                {/* Replaced Session ID with Date */}
+                <th className="border p-3">Date</th>
                 <th className="border p-3">Prompt</th>
                 <th className="border p-3">Summary</th>
                 <th className="border p-3">Rating</th>
@@ -137,9 +142,7 @@ export default function DashboardPage() {
               {sessions.map((session, index) => (
                 <tr
                   key={session.id}
-                  className={`transition-colors ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                  }`}
+                  className={`transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                 >
                   <td className="border p-3 text-center">
                     <input
@@ -148,9 +151,13 @@ export default function DashboardPage() {
                       onChange={() => handleSelectSession(session.id)}
                     />
                   </td>
-                  <td className="border p-3">{session.id}</td>
-                  <td className="border p-3">{session.prompt}</td>
-                  <td className="border p-3">{session.summary || 'Pending'}</td>
+                  <td className="border p-3">
+                    {session.created_at
+                      ? new Date(session.created_at).toLocaleDateString()
+                      : 'N/A'}
+                  </td>
+                  <td className="border p-3">{truncate(session.prompt, 50)}</td>
+                  <td className="border p-3">{session.summary ? truncate(session.summary, 50) : 'Pending'}</td>
                   <td className="border p-3">
                     {session.rating ? (
                       <span className="bg-yellow-300 px-2 py-1 rounded font-semibold">

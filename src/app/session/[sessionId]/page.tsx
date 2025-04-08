@@ -8,12 +8,12 @@ import SpeechToText from '@/components/SpeechToText';
 import Timer from '@/components/Timer';
 import useRequireAuth from '@/hooks/useRequireAuth';
 
-// Helper function to call our API route for generating a question.
-async function fetchGeneratedQuestion(prompt: string, context: string): Promise<string> {
+// Updated helper to pass file context
+async function fetchGeneratedQuestion(prompt: string, context: string, fileInput?: { file_id?: string }): Promise<string> {
   const res = await fetch('/api/generate-question', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, context }),
+    body: JSON.stringify({ prompt, context, fileInput }),
   });
   const data = await res.json();
   if (data.error) {
@@ -24,21 +24,19 @@ async function fetchGeneratedQuestion(prompt: string, context: string): Promise<
 
 export default function SessionPage() {
   useRequireAuth();
-  
-  // Unwrap route parameters using useParams()
   const params = useParams();
   const { sessionId } = params as { sessionId: string };
-
   const router = useRouter();
+
   const [session, setSession] = useState<any>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>('');
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [loadingQuestion, setLoadingQuestion] = useState<boolean>(false);
-  const [timerKey, setTimerKey] = useState<number>(0); // used to reset Timer
-  const [answerStarted, setAnswerStarted] = useState<boolean>(false); // controls answer UI visibility
+  const [timerKey, setTimerKey] = useState<number>(0);
+  const [answerStarted, setAnswerStarted] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Fetch session details from Supabase on mount.
   useEffect(() => {
     async function fetchSession() {
       const { data, error } = await supabase
@@ -47,24 +45,30 @@ export default function SessionPage() {
         .eq('id', sessionId)
         .single();
       if (error) {
-        alert(error.message);
+        setErrorMessage(error.message);
       } else {
         setSession(data);
-        // Initialize question using the prompt if not already set.
         if (!data.current_question) {
           try {
-            const question = await fetchGeneratedQuestion(data.prompt, '');
+            const fileInput = data.openai_file_id ? { file_id: data.openai_file_id } : undefined;
+            const question = await fetchGeneratedQuestion(data.prompt, '', fileInput);
+            const { data: authData, error: authError } = await supabase.auth.getSession();
+            if (authError || !authData.session?.user) {
+              setErrorMessage("Authentication error. Please log in again.");
+              return;
+            }
+            const userId = authData.session.user.id;
             const { error: updateError } = await supabase
               .from('sessions')
-              .update({ current_question: question })
+              .update({ current_question: question, user_id: userId })
               .eq('id', sessionId);
             if (updateError) {
-              alert(updateError.message);
+              setErrorMessage(updateError.message);
               return;
             }
             setCurrentQuestion(question);
           } catch (err: any) {
-            alert(err.message);
+            setErrorMessage(err.message);
           }
         } else {
           setCurrentQuestion(data.current_question);
@@ -74,28 +78,29 @@ export default function SessionPage() {
     fetchSession();
   }, [sessionId]);
 
-  // Handle answer submission from SpeechToText component.
   const handleAnswer = async (answerText: string) => {
     if (!session) return;
-
-    // Append the new answer.
+    setErrorMessage('');
     const newAnswers = [
       ...(session.answers || []),
       { participant: session.participants[currentTurn], answer: answerText },
     ];
-
-    // Calculate how many questions have been completed so far.
     const questionsCompleted = Math.floor(newAnswers.length / session.participants.length);
-    // If reached or exceeded total desired questions, finish session.
     if (questionsCompleted >= session.num_questions) {
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      if (authError || !authData.session?.user) {
+        setErrorMessage("Authentication error. Please log in again.");
+        return;
+      }
+      const userId = authData.session.user.id;
       const { data: finishedSession, error } = await supabase
         .from('sessions')
-        .update({ answers: newAnswers, status: 'finished' })
+        .update({ answers: newAnswers, status: 'finished', user_id: userId })
         .eq('id', sessionId)
         .select('*')
         .single();
       if (error) {
-        alert(error.message);
+        setErrorMessage(error.message);
       } else {
         setSession(finishedSession);
       }
@@ -105,51 +110,52 @@ export default function SessionPage() {
 
     let newQuestion = currentQuestion;
     let newTurn = currentTurn;
-    // If the current participant is the last in the list, generate a new question.
     if (currentTurn >= session.participants.length - 1) {
       newTurn = 0;
       setLoadingQuestion(true);
       try {
-        newQuestion = await fetchGeneratedQuestion(session.prompt, JSON.stringify(newAnswers));
+        const fileInput = session.openai_file_id ? { file_id: session.openai_file_id } : undefined;
+        newQuestion = await fetchGeneratedQuestion(session.prompt, JSON.stringify(newAnswers), fileInput);
       } catch (err: any) {
-        alert(err.message);
+        setErrorMessage(err.message);
       }
       setLoadingQuestion(false);
     } else {
       newTurn = currentTurn + 1;
     }
 
-    // Update the session record in Supabase and re-fetch the updated record.
-    const { data: updatedSession, error } = await supabase
-      .from('sessions')
-      .update({ answers: newAnswers, current_question: newQuestion })
-      .eq('id', sessionId)
-      .select('*')
-      .single();
-    if (error) {
-      alert(error.message);
+    const { data: authData, error: authError } = await supabase.auth.getSession();
+    if (authError || !authData.session?.user) {
+      setErrorMessage("Authentication error. Please log in again.");
       return;
     }
-    // Update local state with the updated session.
+    const userId = authData.session.user.id;
+    const { data: updatedSession, error } = await supabase
+      .from('sessions')
+      .update({ answers: newAnswers, current_question: newQuestion, user_id: userId })
+      .eq('id', sessionId)
+      .select()
+      .single();
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
     setSession(updatedSession);
     setCurrentTurn(newTurn);
     setLiveTranscript('');
-    setTimerKey(prev => prev + 1); // reset Timer
-    setAnswerStarted(false); // require new "Start Answer" click for next turn.
+    setTimerKey(prev => prev + 1);
+    setAnswerStarted(false);
     setCurrentQuestion(updatedSession.current_question);
   };
 
-  // Callback when the timer finishes (auto end the answer).
   const handleTimeUp = () => {
     handleAnswer(liveTranscript);
   };
 
-  // Manual "End Answer" button handler.
   const endAnswerManually = () => {
     handleAnswer(liveTranscript);
   };
 
-  // Finish session and redirect to conclusion.
   const finishSession = () => {
     router.push(`/conclusion/${sessionId}`);
   };
@@ -158,12 +164,16 @@ export default function SessionPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
-      <h2 className="text-3xl font-bold mb-6 text-gray-800">Session {sessionId}</h2>
+      {errorMessage && (
+        <div className="mb-4 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
+          {errorMessage}
+        </div>
+      )}
+      <h2 className="text-3xl font-bold mb-6 text-gray-800">Session Details</h2>
       <QuestionDisplay question={currentQuestion} />
       <p className="mt-6 font-bold text-gray-700">
         Current Participant: {session.participants[currentTurn]}
       </p>
-
       {!answerStarted ? (
         <button
           onClick={() => setAnswerStarted(true)}
@@ -174,11 +184,7 @@ export default function SessionPage() {
       ) : (
         <>
           <div className="mt-6">
-            <Timer
-              initialTime={session.time_limit || 30}
-              onTimeUp={handleTimeUp}
-              key={timerKey}
-            />
+            <Timer initialTime={session.time_limit || 30} onTimeUp={handleTimeUp} key={timerKey} />
           </div>
           <div className="mt-6">
             <SpeechToText onResult={(text) => setLiveTranscript(text)} autoStart={true} />
@@ -191,7 +197,6 @@ export default function SessionPage() {
           </button>
         </>
       )}
-
       {loadingQuestion && (
         <p className="mt-4 text-center text-gray-500 italic">
           Generating next question...

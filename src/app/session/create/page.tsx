@@ -1,4 +1,3 @@
-// /src/app/session/create/page.tsx
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,43 +6,56 @@ import useRequireAuth from '@/hooks/useRequireAuth';
 
 export default function CreateSessionPage() {
   useRequireAuth();
-
   const router = useRouter();
   const [prompt, setPrompt] = useState('');
   const [endGoal, setEndGoal] = useState('');
-  // Store the number as a string for smooth editing.
   const [numQuestionsStr, setNumQuestionsStr] = useState("5");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Retrieve the current session data to get the authenticated user's ID.
+    // Ensure the user is logged in.
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !sessionData.session?.user) {
       alert("You must be logged in to create a session.");
       return;
     }
     const userId = sessionData.session.user.id;
-
-    // Convert the string to a number; default to 1 if invalid.
     const numQuestions = parseInt(numQuestionsStr, 10);
     const validNumQuestions = isNaN(numQuestions) || numQuestions < 1 ? 1 : numQuestions;
 
-    let pdfUrl = null;
+    let openaiFileId: string | null = null;
+    const maxFileSize = 50 * 1024 * 1024; // 50 MB limit
+
     if (pdfFile) {
-      // Upload PDF to Supabase Storage (bucket "pdfs" must exist)
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('pdfs')
-        .upload(`pdfs/${Date.now()}_${pdfFile.name}`, pdfFile);
-      if (uploadError) {
-        alert(uploadError.message);
+      if (pdfFile.size > maxFileSize) {
+        alert("Please upload a PDF smaller than 50 MB.");
         return;
       }
-      pdfUrl = supabase.storage.from('pdfs').getPublicUrl(uploadData.path).data.publicUrl;
+
+      // Build a FormData payload for the file upload API.
+      const formData = new FormData();
+      formData.append("file", pdfFile);
+      formData.append("purpose", "assistants");
+      formData.append("file_size", pdfFile.size.toString());
+
+      try {
+        const response = await fetch('/api/upload-to-openai', {
+          method: 'POST',
+          body: formData,
+        });
+        const json = await response.json();
+        if (json.error) throw new Error(json.error);
+        openaiFileId = json.file_id;
+        console.log("OpenAI File ID:", openaiFileId);
+      } catch (err: any) {
+        alert(`Error uploading file to OpenAI: ${err.message}`);
+        return;
+      }
     }
 
-    // Create session record in Supabase including the user_id.
+    // Create a session record in Supabase and save the OpenAI file ID if available.
     const { data, error } = await supabase
       .from('sessions')
       .insert([
@@ -51,12 +63,12 @@ export default function CreateSessionPage() {
           prompt,
           end_goal: endGoal,
           num_questions: validNumQuestions,
-          pdf_url: pdfUrl,
+          openai_file_id: openaiFileId, // file ID from OpenAI, if a file was uploaded.
           participants: [],
           time_limit: 0,
           answers: [],
           status: 'created',
-          user_id: userId, // <- Include the authenticated user's ID
+          user_id: userId,
         },
       ])
       .select();
@@ -65,7 +77,6 @@ export default function CreateSessionPage() {
       return;
     }
     const newSession = data[0];
-    // Redirect to participant setup with the new session ID
     router.push(`/session/setup?sessionId=${newSession.id}`);
   };
 
