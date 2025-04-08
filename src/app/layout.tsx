@@ -9,6 +9,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <title>TurnTalks</title>
         <meta name="description" content="An interactive AI-powered book club experience" />
+
+        <meta name="description" content="An interactive AI-powered book club experience" />
+
+        {/* Favicon */}
+        <link rel="shortcut icon" href="/favicon.ico" />
+
+        {/* Standard Favicons */}
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+
+        {/* Apple Touch Icon */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+        {/* Android Chrome Icons */}
+        <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
+
+        {/* Web App Manifest */}
+        <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body className="bg-gray-50 text-gray-900 font-sans flex flex-col min-h-screen">
         {/* Header / Navbar */}
