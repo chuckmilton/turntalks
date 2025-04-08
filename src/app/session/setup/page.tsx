@@ -74,14 +74,14 @@ function SessionSetupContent() {
               placeholder={`Participant ${index + 1} name`}
               value={participant}
               onChange={(e) => handleParticipantChange(index, e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-3 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md p-3 mb-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
               required
             />
           ))}
           <button
             type="button"
             onClick={addParticipant}
-            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+            className="px-4 py-2 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
           >
             Add Participant
           </button>
@@ -92,13 +92,13 @@ function SessionSetupContent() {
             type="number"
             value={timeLimit}
             onChange={(e) => setTimeLimit(parseInt(e.target.value))}
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             required
           />
         </div>
         <button
           type="submit"
-          className="px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Start Session
         </button>

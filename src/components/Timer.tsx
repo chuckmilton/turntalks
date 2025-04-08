@@ -20,7 +20,7 @@ const Timer: React.FC<TimerProps> = ({ initialTime, onTimeUp }) => {
   }, [timeLeft, onTimeUp]);
 
   return (
-    <div className="p-6 bg-gray-800 text-white rounded-lg shadow-md text-center transition-transform transform hover:scale-105">
+    <div className="p-6 bg-gray-800 text-white rounded-lg shadow-md text-center transition-transform transform">
       <div className="text-2xl font-semibold mb-2">Time Left</div>
       <div className="text-4xl font-bold">{timeLeft}s</div>
     </div>

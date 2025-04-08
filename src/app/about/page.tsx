@@ -16,7 +16,7 @@ export default function AboutPage() {
       </p>
       <Link
         href="/"
-        className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+        className="inline-block px-6 py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
       >
         Back to Home
       </Link>

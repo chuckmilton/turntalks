@@ -39,3 +39,18 @@ body {
 .animate-fadeInUp {
   animation: fadeInUp 0.5s ease-in-out forwards;
 }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Optional: Create a utility class for fadeIn animation */
+.animate-fadeIn {
+  animation: fadeIn 1s ease forwards;
+}
+

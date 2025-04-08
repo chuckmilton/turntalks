@@ -90,7 +90,7 @@ export default function CreateSessionPage() {
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             required
           />
         </div>
@@ -100,7 +100,7 @@ export default function CreateSessionPage() {
             type="text"
             value={endGoal}
             onChange={(e) => setEndGoal(e.target.value)}
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             required
           />
         </div>
@@ -117,7 +117,7 @@ export default function CreateSessionPage() {
                 setNumQuestionsStr("1");
               }
             }}
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             required
           />
         </div>
@@ -127,12 +127,12 @@ export default function CreateSessionPage() {
             type="file"
             accept=".pdf"
             onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
-            className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
           />
         </div>
         <button
           type="submit"
-          className="px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Next: Participant Setup
         </button>

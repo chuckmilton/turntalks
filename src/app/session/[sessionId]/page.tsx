@@ -208,7 +208,7 @@ export default function SessionPage() {
       {!answerStarted ? (
         <button
           onClick={() => setAnswerStarted(true)}
-          className="mt-6 px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          className="mt-6 px-6 py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Start Answer
         </button>
@@ -222,7 +222,7 @@ export default function SessionPage() {
           </div>
           <button
             onClick={endAnswerManually}
-            className="mt-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+            className="mt-6 px-6 py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
           >
             End Answer
           </button>

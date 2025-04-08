@@ -1,4 +1,3 @@
-// /src/app/auth/signup/page.tsx
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -39,7 +38,7 @@ export default function SignupPage() {
           <span className="block text-gray-700 font-semibold mb-1">Email:</span>
           <input
             type="email"
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -49,7 +48,7 @@ export default function SignupPage() {
           <span className="block text-gray-700 font-semibold mb-1">Password:</span>
           <input
             type="password"
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -57,7 +56,7 @@ export default function SignupPage() {
         </label>
         <button
           type="submit"
-          className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Sign Up
         </button>
@@ -66,7 +65,7 @@ export default function SignupPage() {
         Already have an account?{' '}
         <Link
           href="/auth/login"
-          className="text-green-600 hover:text-green-700 font-bold"
+          className="text-pink-600 hover:text-pink-700 font-bold"
         >
           Login
         </Link>

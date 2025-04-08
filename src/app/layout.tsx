@@ -1,5 +1,6 @@
 import "./globals.css";
 import Link from "next/link";
+import Navbar from "../components/Navbar"; // adjust the path as needed
 
 // /src/app/layout.tsx
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -12,23 +13,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-gray-50 text-gray-900 font-sans flex flex-col min-h-screen">
         {/* Header / Navbar */}
         <header className="relative z-10 bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <Link href="/">
-              <h1 className="text-2xl font-bold text-gray-800 cursor-pointer hover:scale-105 transition-transform duration-300">
-                TurnTalks
-              </h1>
+          <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between">
+            <Link
+              href="/"
+              className="cursor-pointer hover:scale-105 transition-transform duration-300"
+            >
+              <img src="/logo.png" alt="TurnTalks Logo" className="h-16 w-auto" />
             </Link>
-            <nav className="space-x-6">
-              <Link href="/" className="text-gray-800 hover:text-blue-600 transition-colors">
-                Home
-              </Link>
-              <Link href="/dashboard" className="text-gray-800 hover:text-blue-600 transition-colors">
-                Dashboard
-              </Link>
-              <Link href="/about" className="text-gray-800 hover:text-blue-600 transition-colors">
-                About
-              </Link>
-            </nav>
+            <Navbar />
           </div>
         </header>
 

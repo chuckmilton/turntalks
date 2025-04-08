@@ -93,7 +93,8 @@ export default function ConclusionPage() {
     fetchSession();
   }, [sessionId]);
 
-  if (!session) return <p className="text-center mt-10">Loading session data...</p>;
+  if (!session)
+    return <p className="text-center mt-10 text-gray-600">Loading session data...</p>;
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
@@ -107,7 +108,10 @@ export default function ConclusionPage() {
         <p className="mb-6 text-center text-gray-500 italic">Generating Summary...</p>
       ) : (
         summary && (
-          <div className="p-6 border rounded bg-gray-100 mb-6">
+          <div
+            className="p-6 border border-gray-300 rounded bg-gray-50 mb-6 animate-fadeIn"
+            style={{ animation: 'fadeIn 1s ease forwards' }}
+          >
             <h3 className="font-bold text-xl text-gray-700 mb-2">Summary:</h3>
             <p className="text-gray-700 leading-relaxed">{summary}</p>
           </div>
@@ -119,7 +123,7 @@ export default function ConclusionPage() {
       </div>
       <button
         onClick={() => router.push('/dashboard')}
-        className="w-full py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+        className="w-full py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
       >
         Back to Dashboard
       </button>

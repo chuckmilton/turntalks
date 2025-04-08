@@ -1,4 +1,3 @@
-// /src/app/auth/login/page.tsx
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -40,7 +39,7 @@ export default function LoginPage() {
           <span className="block text-gray-700 font-semibold mb-1">Email:</span>
           <input
             type="email"
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -50,7 +49,7 @@ export default function LoginPage() {
           <span className="block text-gray-700 font-semibold mb-1">Password:</span>
           <input
             type="password"
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -58,14 +57,14 @@ export default function LoginPage() {
         </label>
         <button
           type="submit"
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Login
         </button>
       </form>
       <p className="mt-6 text-center text-gray-600">
         Don&apos;t have an account?{' '}
-        <Link href="/auth/signup" className="text-blue-600 hover:text-blue-700 font-bold">
+        <Link href="/auth/signup" className="text-pink-600 hover:text-pink-700 font-bold">
           Sign Up
         </Link>
       </p>

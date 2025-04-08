@@ -1,4 +1,3 @@
-// /src/app/dashboard/page.tsx
 'use client';
 import useRequireAuth from '@/hooks/useRequireAuth';
 import { useEffect, useState } from 'react';
@@ -101,13 +100,13 @@ export default function DashboardPage() {
 
   return (
     <div className="bg-white rounded-xl shadow p-6 animate-fadeInUp">
-      <h2 className="text-3xl font-bold mb-6">Dashboard</h2>
+      <h2 className="text-3xl font-bold mb-6 text-gray-800">Dashboard</h2>
 
       {/* Logout Button */}
       <div className="mb-6 text-right">
         <button
           onClick={handleLogout}
-          className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          className="px-4 py-2 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Logout
         </button>
@@ -116,7 +115,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-6">
         <Link
           href="/session/create"
-          className="px-6 py-2 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          className="px-6 py-2 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Create New Session
         </Link>
@@ -133,7 +132,7 @@ export default function DashboardPage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-100">
+              <tr className="bg-pink-50">
                 <th className="border p-3 text-center">
                   <input
                     type="checkbox"
@@ -181,7 +180,7 @@ export default function DashboardPage() {
                   <td className="border p-3">
                     <Link
                       href={`/conclusion/${session.id}`}
-                      className="text-blue-600 hover:underline"
+                      className="text-pink-600 hover:underline"
                     >
                       View Details
                     </Link>
