@@ -112,7 +112,7 @@ export async function generateQuestion(
  * is an array containing a file part and then a text part; otherwise it's a plain string.
  */
 export async function generateSummary(
-  sessionData: any,
+  sessionData: SessionData,
   fileInput?: FileInput
 ): Promise<string> {
   try {

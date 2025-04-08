@@ -1,4 +1,3 @@
-// /src/app/session/[sessionId]/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -9,7 +8,11 @@ import Timer from '@/components/Timer';
 import useRequireAuth from '@/hooks/useRequireAuth';
 
 // Updated helper to pass file context
-async function fetchGeneratedQuestion(prompt: string, context: string, fileInput?: { file_id?: string }): Promise<string> {
+async function fetchGeneratedQuestion(
+  prompt: string,
+  context: string,
+  fileInput?: { file_id?: string }
+): Promise<string> {
   const res = await fetch('/api/generate-question', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -22,20 +25,37 @@ async function fetchGeneratedQuestion(prompt: string, context: string, fileInput
   return data.question;
 }
 
+// Define a minimal interface for the session data.
+interface Session {
+  id: string;
+  summary?: string;
+  rating?: number;
+  openai_file_id?: string;
+  prompt: string;
+  // The following are added to fix type errors
+  participants: string[];
+  num_questions: number;
+  time_limit: number;
+  answers?: unknown[];
+  current_question?: string;
+  [key: string]: unknown;
+}
+
 export default function SessionPage() {
   useRequireAuth();
   const params = useParams();
   const { sessionId } = params as { sessionId: string };
   const router = useRouter();
 
-  const [session, setSession] = useState<any>(null);
+  // Set session state with the Session interface.
+  const [session, setSession] = useState<Session | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>('');
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [loadingQuestion, setLoadingQuestion] = useState<boolean>(false);
   const [timerKey, setTimerKey] = useState<number>(0);
   const [answerStarted, setAnswerStarted] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
     async function fetchSession() {
@@ -47,11 +67,14 @@ export default function SessionPage() {
       if (error) {
         setErrorMessage(error.message);
       } else {
-        setSession(data);
-        if (!data.current_question) {
+        const sessionData = data as Session;
+        setSession(sessionData);
+        if (!sessionData.current_question) {
           try {
-            const fileInput = data.openai_file_id ? { file_id: data.openai_file_id } : undefined;
-            const question = await fetchGeneratedQuestion(data.prompt, '', fileInput);
+            const fileInput = sessionData.openai_file_id
+              ? { file_id: sessionData.openai_file_id }
+              : undefined;
+            const question = await fetchGeneratedQuestion(sessionData.prompt, '', fileInput);
             const { data: authData, error: authError } = await supabase.auth.getSession();
             if (authError || !authData.session?.user) {
               setErrorMessage("Authentication error. Please log in again.");
@@ -67,11 +90,15 @@ export default function SessionPage() {
               return;
             }
             setCurrentQuestion(question);
-          } catch (err: any) {
-            setErrorMessage(err.message);
+          } catch (err: unknown) {
+            if (err instanceof Error) {
+              setErrorMessage(err.message);
+            } else {
+              setErrorMessage("An unexpected error occurred.");
+            }
           }
         } else {
-          setCurrentQuestion(data.current_question);
+          setCurrentQuestion(sessionData.current_question as string);
         }
       }
     }
@@ -82,7 +109,7 @@ export default function SessionPage() {
     if (!session) return;
     setErrorMessage('');
     const newAnswers = [
-      ...(session.answers || []),
+      ...(session.answers ?? []),
       { participant: session.participants[currentTurn], answer: answerText },
     ];
     const questionsCompleted = Math.floor(newAnswers.length / session.participants.length);
@@ -102,7 +129,7 @@ export default function SessionPage() {
       if (error) {
         setErrorMessage(error.message);
       } else {
-        setSession(finishedSession);
+        setSession(finishedSession as Session);
       }
       router.push(`/conclusion/${sessionId}`);
       return;
@@ -116,8 +143,12 @@ export default function SessionPage() {
       try {
         const fileInput = session.openai_file_id ? { file_id: session.openai_file_id } : undefined;
         newQuestion = await fetchGeneratedQuestion(session.prompt, JSON.stringify(newAnswers), fileInput);
-      } catch (err: any) {
-        setErrorMessage(err.message);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setErrorMessage(err.message);
+        } else {
+          setErrorMessage("An unexpected error occurred.");
+        }
       }
       setLoadingQuestion(false);
     } else {
@@ -140,12 +171,12 @@ export default function SessionPage() {
       setErrorMessage(error.message);
       return;
     }
-    setSession(updatedSession);
+    setSession(updatedSession as Session);
     setCurrentTurn(newTurn);
     setLiveTranscript('');
     setTimerKey(prev => prev + 1);
     setAnswerStarted(false);
-    setCurrentQuestion(updatedSession.current_question);
+    setCurrentQuestion((updatedSession as Session).current_question as string);
   };
 
   const handleTimeUp = () => {
@@ -184,10 +215,10 @@ export default function SessionPage() {
       ) : (
         <>
           <div className="mt-6">
-            <Timer initialTime={session.time_limit || 30} onTimeUp={handleTimeUp} key={timerKey} />
+            <Timer initialTime={session.time_limit ?? 30} onTimeUp={handleTimeUp} key={timerKey} />
           </div>
           <div className="mt-6">
-            <SpeechToText onResult={(text) => setLiveTranscript(text)} autoStart={true} />
+            <SpeechToText onResult={(text: string) => setLiveTranscript(text)} autoStart={true} />
           </div>
           <button
             onClick={endAnswerManually}
