@@ -5,7 +5,6 @@ import Rating from '@/components/Rating';
 import { useRouter, useParams } from 'next/navigation';
 import useRequireAuth from '@/hooks/useRequireAuth';
 
-// Define a minimal interface for the session data.
 // Added optional openai_file_id field to store the file reference.
 interface Session {
   id: string;
