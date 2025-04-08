@@ -16,17 +16,19 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({ onResult, autoStart = true 
       resetTranscript();
       SpeechRecognition.startListening({ continuous: true });
     }
-    return () => SpeechRecognition.stopListening();
+    return () => {
+      void SpeechRecognition.stopListening();
+    };
   }, [autoStart, resetTranscript]);
-
+  
   useEffect(() => {
     console.log("Transcript updated:", transcript);
     onResult(transcript);
   }, [transcript, onResult]);
 
   return (
-    <div className="p-4 border rounded">
-      <p className="text-gray-700">{transcript}</p>
+    <div className="p-6 bg-white border border-gray-300 rounded-lg shadow-md transition hover:shadow-lg">
+      <p className="text-gray-800 text-lg">{transcript}</p>
     </div>
   );
 };

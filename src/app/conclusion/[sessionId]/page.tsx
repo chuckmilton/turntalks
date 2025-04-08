@@ -1,10 +1,14 @@
+// /src/app/conclusion/[sessionId]/page.tsx
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Rating from '@/components/Rating';
 import { useRouter, useParams } from 'next/navigation';
+import useRequireAuth from '@/hooks/useRequireAuth';
 
 export default function ConclusionPage() {
+  useRequireAuth();
+
   // Unwrap route parameters using useParams()
   const params = useParams();
   const { sessionId } = params as { sessionId: string };
@@ -66,29 +70,30 @@ export default function ConclusionPage() {
     fetchSession();
   }, [sessionId]);
 
-  if (!session) return <p>Loading session data...</p>;
+  if (!session) return <p className="text-center mt-10">Loading session data...</p>;
 
   return (
-    <div className="max-w-2xl mx-auto p-4 bg-white shadow rounded">
-      <h2 className="text-2xl font-bold mb-4 text-gray-700">Session Summary: {sessionId}</h2>
+    <div className="max-w-2xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
+      <h2 className="text-3xl font-bold mb-6 text-gray-800">
+        Session Summary: {sessionId}
+      </h2>
       {loadingSummary ? (
-        <p className="mb-4">Generating Summary...</p>
+        <p className="mb-6 text-center text-gray-500 italic">Generating Summary...</p>
       ) : (
         summary && (
-          <div className="p-4 border rounded bg-gray-100 mb-4">
-            <h3 className="font-bold text-gray-700">Summary:</h3>
-            <p className="text-gray-700">{summary}</p>
+          <div className="p-6 border rounded bg-gray-100 mb-6">
+            <h3 className="font-bold text-xl text-gray-700 mb-2">Summary:</h3>
+            <p className="text-gray-700 leading-relaxed">{summary}</p>
           </div>
         )
       )}
-      <div>
-        <h3 className="font-bold mb-2 text-gray-700">Rate the Session:</h3>
-        {/* Pass the stored rating to the Rating component */}
+      <div className="mb-6">
+        <h3 className="font-bold text-xl mb-2 text-gray-800">Rate the Session:</h3>
         <Rating sessionId={sessionId} initialRating={session.rating} />
       </div>
       <button
         onClick={() => router.push('/dashboard')}
-        className="mt-4 px-4 py-2 bg-green-500 text-white rounded"
+        className="w-full py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
       >
         Back to Dashboard
       </button>

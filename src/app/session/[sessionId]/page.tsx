@@ -1,3 +1,4 @@
+// /src/app/session/[sessionId]/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -5,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import QuestionDisplay from '@/components/QuestionDisplay';
 import SpeechToText from '@/components/SpeechToText';
 import Timer from '@/components/Timer';
+import useRequireAuth from '@/hooks/useRequireAuth';
 
 // Helper function to call our API route for generating a question.
 async function fetchGeneratedQuestion(prompt: string, context: string): Promise<string> {
@@ -21,6 +23,8 @@ async function fetchGeneratedQuestion(prompt: string, context: string): Promise<
 }
 
 export default function SessionPage() {
+  useRequireAuth();
+  
   // Unwrap route parameters using useParams()
   const params = useParams();
   const { sessionId } = params as { sessionId: string };
@@ -150,40 +154,53 @@ export default function SessionPage() {
     router.push(`/conclusion/${sessionId}`);
   };
 
-  if (!session) return <p>Loading session...</p>;
+  if (!session) return <p className="text-center mt-10">Loading session...</p>;
 
   return (
-    <div className="max-w-2xl mx-auto p-4 bg-white shadow rounded">
-      <h2 className="text-2xl font-bold mb-4">Session {sessionId}</h2>
+    <div className="max-w-2xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
+      <h2 className="text-3xl font-bold mb-6 text-gray-800">Session {sessionId}</h2>
       <QuestionDisplay question={currentQuestion} />
-      <p className="mt-4 font-bold">
+      <p className="mt-6 font-bold text-gray-700">
         Current Participant: {session.participants[currentTurn]}
       </p>
-      
+
       {!answerStarted ? (
         <button
           onClick={() => setAnswerStarted(true)}
-          className="mt-4 px-4 py-2 bg-green-500 text-white rounded"
+          className="mt-6 px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Start Answer
         </button>
       ) : (
         <>
-          <div className="mt-4">
-            <Timer initialTime={session.time_limit || 30} onTimeUp={handleTimeUp} key={timerKey} />
+          <div className="mt-6">
+            <Timer
+              initialTime={session.time_limit || 30}
+              onTimeUp={handleTimeUp}
+              key={timerKey}
+            />
           </div>
-          <div className="mt-4">
+          <div className="mt-6">
             <SpeechToText onResult={(text) => setLiveTranscript(text)} autoStart={true} />
-            <p className="mt-2">Live Transcript: {liveTranscript}</p>
           </div>
-          <button onClick={endAnswerManually} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded">
+          <button
+            onClick={endAnswerManually}
+            className="mt-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          >
             End Answer
           </button>
         </>
       )}
 
-      {loadingQuestion && <p className="mt-4">Generating next question...</p>}
-      <button onClick={finishSession} className="mt-4 px-4 py-2 bg-red-500 text-white rounded">
+      {loadingQuestion && (
+        <p className="mt-4 text-center text-gray-500 italic">
+          Generating next question...
+        </p>
+      )}
+      <button
+        onClick={finishSession}
+        className="mt-6 w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+      >
         Finish Session
       </button>
     </div>

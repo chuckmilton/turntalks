@@ -1,9 +1,15 @@
+// /src/app/dashboard/page.tsx
 'use client';
+import useRequireAuth from '@/hooks/useRequireAuth';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
+  useRequireAuth();
+
+  const router = useRouter();
   const [sessions, setSessions] = useState<any[]>([]);
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState<boolean>(false);
@@ -68,74 +74,105 @@ export default function DashboardPage() {
     setSelectAll(false);
   };
 
+  // Logout handler
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      alert(error.message);
+    } else {
+      router.push('/auth/login');
+    }
+  };
+
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-4">Dashboard</h2>
-      <div className="mb-4">
+    <div className="bg-white rounded-xl shadow p-6 animate-fadeInUp">
+      <h2 className="text-3xl font-bold mb-6">Dashboard</h2>
+
+      {/* Logout Button */}
+      <div className="mb-6 text-right">
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+        >
+          Logout
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between mb-6">
         <Link
           href="/session/create"
-          className="px-4 py-2 bg-green-500 text-white rounded mb-4 inline-block"
+          className="px-6 py-2 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Create New Session
         </Link>
-      </div>
-      <div className="mb-4">
         <button
           onClick={handleDeleteSelected}
-          className="px-4 py-2 bg-red-500 text-white rounded"
+          className="px-6 py-2 bg-red-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Delete Selected
         </button>
       </div>
       {sessions.length === 0 ? (
-        <p>No sessions found.</p>
+        <p className="text-gray-600 text-center">No sessions found.</p>
       ) : (
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th className="border p-2">
-                <input
-                  type="checkbox"
-                  checked={selectAll}
-                  onChange={handleSelectAll}
-                />
-              </th>
-              <th className="border p-2">Session ID</th>
-              <th className="border p-2">Prompt</th>
-              <th className="border p-2">Summary</th>
-              <th className="border p-2">Rating</th>
-              <th className="border p-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessions.map((session) => (
-              <tr key={session.id}>
-                <td className="border p-2 text-center">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border p-3 text-center">
                   <input
                     type="checkbox"
-                    checked={selectedSessions.includes(session.id)}
-                    onChange={() => handleSelectSession(session.id)}
+                    checked={selectAll}
+                    onChange={handleSelectAll}
                   />
-                </td>
-                <td className="border p-2">{session.id}</td>
-                <td className="border p-2">{session.prompt}</td>
-                <td className="border p-2">{session.summary || 'Pending'}</td>
-                <td className="border p-2">
-                  {session.rating ? (
-                    <span className="bg-yellow-300 p-1 rounded">{session.rating}</span>
-                  ) : (
-                    'Not Rated'
-                  )}
-                </td>
-                <td className="border p-2">
-                  <Link href={`/conclusion/${session.id}`} className="text-blue-500">
-                    View Details
-                  </Link>
-                </td>
+                </th>
+                <th className="border p-3">Session ID</th>
+                <th className="border p-3">Prompt</th>
+                <th className="border p-3">Summary</th>
+                <th className="border p-3">Rating</th>
+                <th className="border p-3">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sessions.map((session, index) => (
+                <tr
+                  key={session.id}
+                  className={`transition-colors ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  }`}
+                >
+                  <td className="border p-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedSessions.includes(session.id)}
+                      onChange={() => handleSelectSession(session.id)}
+                    />
+                  </td>
+                  <td className="border p-3">{session.id}</td>
+                  <td className="border p-3">{session.prompt}</td>
+                  <td className="border p-3">{session.summary || 'Pending'}</td>
+                  <td className="border p-3">
+                    {session.rating ? (
+                      <span className="bg-yellow-300 px-2 py-1 rounded font-semibold">
+                        {session.rating}
+                      </span>
+                    ) : (
+                      'Not Rated'
+                    )}
+                  </td>
+                  <td className="border p-3">
+                    <Link
+                      href={`/conclusion/${session.id}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      View Details
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

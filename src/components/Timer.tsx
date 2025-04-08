@@ -1,3 +1,4 @@
+// /src/components/Timer.tsx
 'use client';
 import React, { useEffect, useState } from 'react';
 
@@ -18,7 +19,12 @@ const Timer: React.FC<TimerProps> = ({ initialTime, onTimeUp }) => {
     return () => clearTimeout(timerId);
   }, [timeLeft, onTimeUp]);
 
-  return <div className="text-lg font-bold">Time Left: {timeLeft}s</div>;
+  return (
+    <div className="p-6 bg-gray-800 text-white rounded-lg shadow-md text-center transition-transform transform hover:scale-105">
+      <div className="text-2xl font-semibold mb-2">Time Left</div>
+      <div className="text-4xl font-bold">{timeLeft}s</div>
+    </div>
+  );
 };
 
 export default Timer;

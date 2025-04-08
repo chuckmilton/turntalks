@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import useRequireAuth from '@/hooks/useRequireAuth';
 
 export default function SessionSetupPage() {
+  useRequireAuth();
+  
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId');
@@ -44,11 +47,11 @@ export default function SessionSetupPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-4 bg-white shadow rounded text-gray-700">
-      <h2 className="text-2xl font-bold mb-4">Session Setup</h2>
+    <div className="max-w-xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
+      <h2 className="text-3xl font-bold mb-6 text-gray-800">Session Setup</h2>
       <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block font-bold mb-1">Participants:</label>
+        <div className="mb-6">
+          <label className="block font-semibold mb-2">Participants:</label>
           {participants.map((participant, index) => (
             <input
               key={index}
@@ -56,25 +59,32 @@ export default function SessionSetupPage() {
               placeholder={`Participant ${index + 1} name`}
               value={participant}
               onChange={(e) => handleParticipantChange(index, e.target.value)}
-              className="w-full border p-2 mb-2"
+              className="w-full border border-gray-300 rounded-md p-3 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           ))}
-          <button type="button" onClick={addParticipant} className="px-4 py-2 bg-blue-500 text-white rounded">
+          <button
+            type="button"
+            onClick={addParticipant}
+            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          >
             Add Participant
           </button>
         </div>
-        <div className="mb-4">
-          <label className="block font-bold mb-1">Time Limit per Question (seconds):</label>
+        <div className="mb-6">
+          <label className="block font-semibold mb-2">Time Limit per Question (seconds):</label>
           <input
             type="number"
             value={timeLimit}
             onChange={(e) => setTimeLimit(parseInt(e.target.value))}
-            className="w-full border p-2"
+            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
         </div>
-        <button type="submit" className="px-4 py-2 bg-green-500 text-white rounded">
+        <button
+          type="submit"
+          className="px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+        >
           Start Session
         </button>
       </form>

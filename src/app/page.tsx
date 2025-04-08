@@ -3,18 +3,29 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <div className="max-w-xl mx-auto my-10 p-4 bg-white shadow rounded">
-      <h2 className="text-2xl font-bold mb-4">Welcome to TurnTalk</h2>
-      <p className="mb-6">
-        Create sessions, join interactive discussions, and let AI help you transform your ideas!
-      </p>
-      <div className="flex space-x-4">
-        <Link href="/auth/login" className="px-4 py-2 bg-blue-500 text-white rounded">
-          Login
-        </Link>
-        <Link href="/auth/signup" className="px-4 py-2 bg-green-500 text-white rounded">
-          Sign Up
-        </Link>
+    <div className="relative bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg overflow-hidden">
+      {/* Hero Section */}
+      <div className="px-8 py-16 text-center text-white">
+        <h2 className="text-4xl font-extrabold mb-4 drop-shadow-md">
+          Welcome to TurnTalks
+        </h2>
+        <p className="mb-8 text-lg max-w-2xl mx-auto">
+          Create sessions, join interactive discussions, and let AI help you transform your ideas!
+        </p>
+        <div className="flex justify-center space-x-4">
+          <Link
+            href="/auth/login"
+            className="px-6 py-3 bg-white text-blue-600 font-semibold rounded-md shadow hover:shadow-lg transition transform hover:-translate-y-0.5"
+          >
+            Login
+          </Link>
+          <Link
+            href="/auth/signup"
+            className="px-6 py-3 bg-gray-900 text-white font-semibold rounded-md shadow hover:shadow-lg transition transform hover:-translate-y-0.5"
+          >
+            Sign Up
+          </Link>
+        </div>
       </div>
     </div>
   );
