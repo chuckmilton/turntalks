@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     }
 
     // Derive filename from the uploaded file if possible.
-    let filename = (fileEntry instanceof File && fileEntry.name)
+    const filename = (fileEntry instanceof File && fileEntry.name)
       ? fileEntry.name
       : `file_${Date.now()}.pdf`;
 
@@ -49,10 +49,11 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ file_id: fileResponse.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /api/upload-to-openai:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

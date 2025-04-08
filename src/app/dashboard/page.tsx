@@ -10,11 +10,22 @@ function truncate(text: string, limit = 50) {
   return text.length > limit ? text.substring(0, limit) + '...' : text;
 }
 
+// Define a minimal interface for a session.
+// Adjust or extend this interface as needed to match your Supabase schema.
+interface Session {
+  id: string;
+  created_at?: string;
+  prompt: string;
+  summary?: string;
+  rating?: number;
+  [key: string]: unknown;
+}
+
 export default function DashboardPage() {
   useRequireAuth();
 
   const router = useRouter();
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState<boolean>(false);
 
@@ -27,7 +38,7 @@ export default function DashboardPage() {
     if (error) {
       alert(error.message);
     } else {
-      setSessions(data);
+      setSessions(data as Session[]);
     }
   };
 

@@ -49,8 +49,9 @@ export default function CreateSessionPage() {
         if (json.error) throw new Error(json.error);
         openaiFileId = json.file_id;
         console.log("OpenAI File ID:", openaiFileId);
-      } catch (err: any) {
-        alert(`Error uploading file to OpenAI: ${err.message}`);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        alert(`Error uploading file to OpenAI: ${errorMessage}`);
         return;
       }
     }

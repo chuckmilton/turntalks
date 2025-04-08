@@ -1,7 +1,7 @@
 // /src/app/api/transcription/route.ts
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import formidable, { Fields, Files } from 'formidable';
+import formidable, { File, Fields, Files } from 'formidable';
 import fs from 'fs';
 import { IncomingMessage } from 'http';
 import { Readable } from 'stream';
@@ -14,6 +14,11 @@ export const config = {
   },
 };
 
+// Define an interface that extends Readable with the headers property
+interface RequestReadable extends Readable {
+  headers?: Record<string, string>;
+}
+
 async function parseForm(req: Request): Promise<{ fields: Fields; files: Files }> {
   // Read the request body into a buffer
   const buffer = await req.arrayBuffer();
@@ -25,12 +30,13 @@ async function parseForm(req: Request): Promise<{ fields: Fields; files: Files }
 
   // Attach headers from the Request (converted into a plain object)
   // This is needed by formidable to properly parse the content-type, etc.
-  (readable as any).headers = Object.fromEntries(req.headers.entries());
+  const reqReadable = readable as RequestReadable;
+  reqReadable.headers = Object.fromEntries(req.headers.entries());
 
   return new Promise((resolve, reject) => {
     const form = formidable({ multiples: false });
     // Cast the stream to IncomingMessage (for formidable compatibility)
-    form.parse(readable as unknown as IncomingMessage, (err: any, fields: Fields, files: Files) => {
+    form.parse(reqReadable as unknown as IncomingMessage, (err: Error, fields: Fields, files: Files) => {
       if (err) {
         return reject(err);
       }
@@ -48,9 +54,9 @@ export async function POST(req: Request) {
     }
 
     // In case audioFile is an array (which should not occur since multiples: false),
-    // select the first element. Then cast to any to access the .filepath property.
+    // select the first element. Then cast to File (from formidable) to access the .filepath property.
     const fileData = Array.isArray(audioFile) ? audioFile[0] : audioFile;
-    const filePath = (fileData as any).filepath;
+    const filePath = (fileData as File).filepath;
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const transcriptionResponse = await openai.audio.transcriptions.create({

@@ -1,57 +1,105 @@
-// /lib/openaiClient.ts
 export const runtime = 'nodejs';
 
 import OpenAI from 'openai';
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Updated interface: only support file_id.
+// Updated interface: support file_id, filename, and file_data.
 interface FileInput {
-  file_id?: string;
+  file_id?: string;   // Use if you've already uploaded the file via OpenAI's Files API.
+  filename?: string;  // Use when providing Base64-encoded file data.
+  file_data?: string; // Base64-encoded data with MIME prefix, e.g. "data:application/pdf;base64,..."
+}
+
+/**
+ * Define the expected structure for text message parts.
+ * This matches what the API expects for a text message when sending an array.
+ */
+interface ChatCompletionContentPartText {
+  type: "text";
+  text: string;
+}
+
+/**
+ * Define the expected structure for file message parts.
+ * (Adjust this interface if your model supports richer file inputs.)
+ */
+interface ChatCompletionContentPartFile {
+  type: "file";
+  file: {
+    file_id?: string;
+    filename?: string;
+    file_data?: string;
+  };
+}
+
+/**
+ * Our union type for a message part.
+ * The API accepts either text parts or file parts.
+ */
+type ChatCompletionContentPart = ChatCompletionContentPartText | ChatCompletionContentPartFile;
+
+/**
+ * Minimal interface for session data in summary generation.
+ */
+interface SessionData {
+  prompt: string;
+  end_goal: string;
+  answers: unknown;
 }
 
 /**
  * Generates a question based on a prompt and previous answers.
- * If file context is provided (by supplying a valid file_id), it will include that file in the conversation.
+ * Optionally includes file context. If a file is provided, the message content is an array
+ * containing a file part and then a text part; otherwise it's a plain string.
  */
 export async function generateQuestion(
   prompt: string,
   context: string,
   fileInput?: FileInput
 ): Promise<string> {
-  console.log("generateQuestion fileInput:", fileInput);
-  
-  // Build the default text message.
-  const defaultTextMessage = {
-    type: "text",
-    text: `Based on this prompt: "${prompt}" and previous answers: "${context}", generate a thought-provoking question.`
-  };
-
-  // Create the message content array.
-  let messageContent: Array<{ type: string; [key: string]: any }> = [];
-
-  if (fileInput && fileInput.file_id) {
-    // If we have a valid file_id, include a file message followed by the text message.
-    messageContent.push({
-      type: "file",
-      file: { file_id: fileInput.file_id },
-    });
-    messageContent.push(defaultTextMessage);
-  } else {
-    // No file context; just use the text message.
-    messageContent.push(defaultTextMessage);
-  }
-
   try {
-    const completion = await client.chat.completions.create({
-      model: "gpt-4o", // Be sure this model supports file inputs.
-      messages: [{
-        role: "user",
-        content: messageContent as any,
-      }],
-    });
+    let messageContent: string | ChatCompletionContentPart[];
+    if (fileInput) {
+      if (fileInput.file_id) {
+        messageContent = [
+          {
+            type: "file",
+            file: { file_id: fileInput.file_id },
+          },
+          {
+            type: "text",
+            text: `Based on this prompt: "${prompt}" and previous answers: "${context}", generate a thought-provoking question.`,
+          },
+        ];
+      } else if (fileInput.file_data && fileInput.filename) {
+        messageContent = [
+          {
+            type: "file",
+            file: { filename: fileInput.filename, file_data: fileInput.file_data },
+          },
+          {
+            type: "text",
+            text: `Based on this prompt: "${prompt}" and previous answers: "${context}", generate a thought-provoking question.`,
+          },
+        ];
+      } else {
+        messageContent = `Based on this prompt: "${prompt}" and previous answers: "${context}", generate a thought-provoking question.`;
+      }
+    } else {
+      messageContent = `Based on this prompt: "${prompt}" and previous answers: "${context}", generate a thought-provoking question.`;
+    }
 
-    return completion.choices[0].message.content ?? "No content generated.";
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o", // or choose "gpt-3.5-turbo" as needed
+      messages: [
+        {
+          role: "user",
+          content: messageContent,
+        },
+      ],
+    });
+    return completion.choices[0].message.content ?? "";
   } catch (error) {
     console.error("Error generating question:", error);
     return "Error generating question.";
@@ -60,40 +108,58 @@ export async function generateQuestion(
 
 /**
  * Generates a summary based on session data.
- * If file context is provided (via a valid file_id), it will include that file in the conversation.
+ * Optionally includes a file input. When a file is provided, the message content
+ * is an array containing a file part and then a text part; otherwise it's a plain string.
  */
 export async function generateSummary(
   sessionData: any,
   fileInput?: FileInput
 ): Promise<string> {
-  const context = `Prompt: ${sessionData.prompt}\nEnd Goal: ${sessionData.end_goal}\nAnswers: ${JSON.stringify(sessionData.answers)}`;
-  const defaultTextMessage = {
-    type: "text",
-    text: `Based on the session data:\n${context}\nProvide a concise summary addressing the end goal.`
-  };
-
-  let messageContent: Array<{ type: string; [key: string]: any }> = [];
-
-  if (fileInput && fileInput.file_id) {
-    messageContent.push({
-      type: "file",
-      file: { file_id: fileInput.file_id },
-    });
-    messageContent.push(defaultTextMessage);
-  } else {
-    messageContent.push(defaultTextMessage);
-  }
-
   try {
+    const contextStr = `Prompt: ${sessionData.prompt}\nEnd Goal: ${sessionData.end_goal}\nAnswers: ${JSON.stringify(
+      sessionData.answers
+    )}`;
+    let messageContent: string | ChatCompletionContentPart[];
+    if (fileInput) {
+      if (fileInput.file_id) {
+        messageContent = [
+          {
+            type: "file",
+            file: { file_id: fileInput.file_id },
+          },
+          {
+            type: "text",
+            text: `Based on the session data:\n${contextStr}\nProvide a concise summary addressing the end goal.`,
+          },
+        ];
+      } else if (fileInput.file_data && fileInput.filename) {
+        messageContent = [
+          {
+            type: "file",
+            file: { filename: fileInput.filename, file_data: fileInput.file_data },
+          },
+          {
+            type: "text",
+            text: `Based on the session data:\n${contextStr}\nProvide a concise summary addressing the end goal.`,
+          },
+        ];
+      } else {
+        messageContent = `Based on the session data:\n${contextStr}\nProvide a concise summary addressing the end goal.`;
+      }
+    } else {
+      messageContent = `Based on the session data:\n${contextStr}\nProvide a concise summary addressing the end goal.`;
+    }
+    
     const completion = await client.chat.completions.create({
       model: "gpt-4o",
-      messages: [{
-        role: "user",
-        content: messageContent as any,
-      }],
+      messages: [
+        {
+          role: "user",
+          content: messageContent,
+        },
+      ],
     });
-
-    return completion.choices[0].message.content ?? "No content generated.";
+    return completion.choices[0].message.content ?? "";
   } catch (error) {
     console.error("Error generating summary:", error);
     return "Error generating summary.";

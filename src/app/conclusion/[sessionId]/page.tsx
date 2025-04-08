@@ -1,4 +1,3 @@
-// /src/app/conclusion/[sessionId]/page.tsx
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -6,30 +5,46 @@ import Rating from '@/components/Rating';
 import { useRouter, useParams } from 'next/navigation';
 import useRequireAuth from '@/hooks/useRequireAuth';
 
+// Define a minimal interface for the session data.
+// Added optional openai_file_id field to store the file reference.
+interface Session {
+  id: string;
+  summary?: string;
+  rating?: number;
+  openai_file_id?: string;
+  [key: string]: unknown;
+}
+
 export default function ConclusionPage() {
   useRequireAuth();
 
   const params = useParams();
   const { sessionId } = params as { sessionId: string };
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [summary, setSummary] = useState<string>('');
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
 
   // Function to auto-generate summary if it doesn't exist.
-  async function handleGenerateSummary(sessionData: any) {
+  async function handleGenerateSummary(sessionData: Session | null) {
     if (!sessionData) return;
     setLoadingSummary(true);
     try {
+      // If the session record includes an OpenAI file ID, create a fileInput object.
+      const fileInput = sessionData.openai_file_id
+        ? { file_id: sessionData.openai_file_id }
+        : undefined;
+
       const res = await fetch('/api/generate-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionData }),
+        // Send both sessionData and fileInput to the API.
+        body: JSON.stringify({ sessionData, fileInput }),
       });
       const result = await res.json();
       if (result.error) throw new Error(result.error);
-      const summaryText = result.summary;
+      const summaryText: string = result.summary;
       setSummary(summaryText);
 
       // Retrieve current user id.
@@ -48,8 +63,12 @@ export default function ConclusionPage() {
       if (error) {
         setErrorMessage(error.message);
       }
-    } catch (err: any) {
-      setErrorMessage(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage('An unexpected error occurred.');
+      }
     }
     setLoadingSummary(false);
   }
@@ -64,11 +83,11 @@ export default function ConclusionPage() {
       if (error) {
         setErrorMessage(error.message);
       } else {
-        setSession(data);
-        if (data.summary) {
-          setSummary(data.summary);
+        setSession(data as Session);
+        if ((data as Session).summary) {
+          setSummary((data as Session).summary as string);
         } else {
-          await handleGenerateSummary(data);
+          await handleGenerateSummary(data as Session);
         }
       }
     }
