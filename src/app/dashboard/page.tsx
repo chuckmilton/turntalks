@@ -9,8 +9,6 @@ function truncate(text: string, limit = 50) {
   return text.length > limit ? text.substring(0, limit) + '...' : text;
 }
 
-// Define a minimal interface for a session.
-// Adjust or extend this interface as needed to match your Supabase schema.
 interface Session {
   id: string;
   created_at?: string;
@@ -88,20 +86,13 @@ export default function DashboardPage() {
     setSelectAll(false);
   };
 
-  // Optimized logout handler that ignores 403 errors.
+  // Logout handler using the same logic as your other project.
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      // Check if the error is a 403 due to a missing API key.
-      if (error.status === 403 || error.message.includes('No API key found')) {
-        console.warn('Ignoring 403 error on logout:', error.message);
-      } else {
-        alert(error.message);
-      }
-    }
+    // Call signOut, ignoring any errors (including 403 errors).
+    await supabase.auth.signOut();
+    // Redirect the user after sign-out.
     router.push('/auth/login');
   };
-
 
   return (
     <div className="bg-white rounded-xl shadow p-6 animate-fadeInUp">
@@ -145,7 +136,6 @@ export default function DashboardPage() {
                     onChange={handleSelectAll}
                   />
                 </th>
-                {/* Replaced Session ID with Date */}
                 <th className="border p-3">Date</th>
                 <th className="border p-3">Prompt</th>
                 <th className="border p-3">Summary</th>
@@ -172,7 +162,9 @@ export default function DashboardPage() {
                       : 'N/A'}
                   </td>
                   <td className="border p-3">{truncate(session.prompt, 50)}</td>
-                  <td className="border p-3">{session.summary ? truncate(session.summary, 50) : 'Pending'}</td>
+                  <td className="border p-3">
+                    {session.summary ? truncate(session.summary, 50) : 'Pending'}
+                  </td>
                   <td className="border p-3">
                     {session.rating ? (
                       <span className="bg-yellow-300 px-2 py-1 rounded font-semibold">
