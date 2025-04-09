@@ -2,9 +2,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import type { User } from '@supabase/supabase-js';
 
 export default function HomePage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,10 +29,12 @@ export default function HomePage() {
     });
 
     return () => {
+      // Unsubscribe from auth listener
       authListener.subscription.unsubscribe();
     };
   }, []);
 
+  // Optionally show a loading message while checking auth status.
   if (loading) {
     return <p className="text-center mt-10 text-white">Loading...</p>;
   }
