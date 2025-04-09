@@ -9,8 +9,6 @@ function truncate(text: string, limit = 50) {
   return text.length > limit ? text.substring(0, limit) + '...' : text;
 }
 
-// Define a minimal interface for a session.
-// Adjust or extend this interface as needed to match your Supabase schema.
 interface Session {
   id: string;
   created_at?: string;
@@ -82,20 +80,20 @@ export default function DashboardPage() {
       alert(error.message);
       return;
     }
-    // Refresh sessions and reset selection.
     await fetchSessions();
     setSelectedSessions([]);
     setSelectAll(false);
   };
 
-  // Logout handler.
+  // Optimized logout handler.
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) {
+    if (error && !error.message.includes('Auth session missing!')) {
+      // If there's an error that isn't due to a missing session, display it.
       alert(error.message);
-    } else {
-      router.push('/auth/login');
     }
+    // Clear local session and redirect regardless of the error (403 can be safely ignored).
+    router.push('/auth/login');
   };
 
   return (
@@ -134,13 +132,8 @@ export default function DashboardPage() {
             <thead>
               <tr className="bg-pink-50">
                 <th className="border p-3 text-center">
-                  <input
-                    type="checkbox"
-                    checked={selectAll}
-                    onChange={handleSelectAll}
-                  />
+                  <input type="checkbox" checked={selectAll} onChange={handleSelectAll} />
                 </th>
-                {/* Replaced Session ID with Date */}
                 <th className="border p-3">Date</th>
                 <th className="border p-3">Prompt</th>
                 <th className="border p-3">Summary</th>
@@ -162,12 +155,12 @@ export default function DashboardPage() {
                     />
                   </td>
                   <td className="border p-3">
-                    {session.created_at
-                      ? new Date(session.created_at).toLocaleDateString()
-                      : 'N/A'}
+                    {session.created_at ? new Date(session.created_at).toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="border p-3">{truncate(session.prompt, 50)}</td>
-                  <td className="border p-3">{session.summary ? truncate(session.summary, 50) : 'Pending'}</td>
+                  <td className="border p-3">
+                    {session.summary ? truncate(session.summary, 50) : 'Pending'}
+                  </td>
                   <td className="border p-3">
                     {session.rating ? (
                       <span className="bg-yellow-300 px-2 py-1 rounded font-semibold">
@@ -178,10 +171,7 @@ export default function DashboardPage() {
                     )}
                   </td>
                   <td className="border p-3">
-                    <Link
-                      href={`/conclusion/${session.id}`}
-                      className="text-pink-600 hover:underline"
-                    >
+                    <Link href={`/conclusion/${session.id}`} className="text-pink-600 hover:underline">
                       View Details
                     </Link>
                   </td>
