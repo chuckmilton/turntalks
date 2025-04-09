@@ -91,12 +91,11 @@ export default function DashboardPage() {
   // Logout handler.
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error && !error.message.includes("Auth session missing!")) {
-      // Only alert if the error is different.
+    if (error) {
       alert(error.message);
+    } else {
+      router.push('/auth/login');
     }
-    // Redirect regardless: the goal is to remove any session.
-    router.push('/auth/login');
   };
 
   return (
