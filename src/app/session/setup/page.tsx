@@ -90,11 +90,12 @@ function SessionSetupContent() {
           <label className="block font-semibold mb-2">Time Limit per Question (seconds):</label>
           <input
             type="number"
-            value={timeLimit}
+            value={timeLimit.toString()}
             onChange={(e) => setTimeLimit(parseInt(e.target.value))}
             className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             required
           />
+
         </div>
         <button
           type="submit"
