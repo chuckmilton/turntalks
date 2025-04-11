@@ -9,19 +9,45 @@ export default function SignupPage() {
   useRedirectIfAuth();
 
   const router = useRouter();
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(''); // Clear previous errors
-    const { error } = await supabase.auth.signUp({ email, password });
+    setSuccessMessage(''); // Clear previous success message
+
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { display_name: displayName },
+      },
+    });
+
     if (error) {
-      // Display the error inline instead of alerting it.
-      setErrorMessage(error.message);
+      // Check for duplicate account errors.
+      if (
+        error.message.toLowerCase().includes("duplicate") ||
+        error.message.toLowerCase().includes("already registered")
+      ) {
+        setErrorMessage("This email is already registered. Please log in instead.");
+      } else {
+        setErrorMessage(error.message);
+      }
     } else {
-      router.push('/dashboard');
+      setSuccessMessage(
+        "A confirmation email has been sent to your email address. Please check your inbox to complete your registration. If you already have an account, please use the 'Forgot Password' option."
+      );
     }
   };
 
@@ -33,40 +59,65 @@ export default function SignupPage() {
           {errorMessage}
         </div>
       )}
-      <form onSubmit={handleSignup}>
-        <label className="block mb-4">
-          <span className="block text-gray-700 font-semibold mb-1">Email:</span>
-          <input
-            type="email"
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
-        <label className="block mb-6">
-          <span className="block text-gray-700 font-semibold mb-1">Password:</span>
-          <input
-            type="password"
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
-        <button
-          type="submit"
-          className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
-        >
-          Sign Up
-        </button>
-      </form>
+      {successMessage && (
+        <div className="mb-6 p-3 bg-green-100 text-green-600 border border-green-200 rounded">
+          {successMessage}
+        </div>
+      )}
+      {/* Only display the sign-up form if there's no success message */}
+      {!successMessage && (
+        <form onSubmit={handleSignup}>
+          <label className="block mb-4">
+            <span className="block text-gray-700 font-semibold mb-1">Display Name:</span>
+            <input
+              type="text"
+              className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              required
+            />
+          </label>
+          <label className="block mb-4">
+            <span className="block text-gray-700 font-semibold mb-1">Email:</span>
+            <input
+              type="email"
+              className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </label>
+          <label className="block mb-4">
+            <span className="block text-gray-700 font-semibold mb-1">Password:</span>
+            <input
+              type="password"
+              className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </label>
+          <label className="block mb-6">
+            <span className="block text-gray-700 font-semibold mb-1">Confirm Password:</span>
+            <input
+              type="password"
+              className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </label>
+          <button
+            type="submit"
+            className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          >
+            Sign Up
+          </button>
+        </form>
+      )}
       <p className="mt-6 text-center text-gray-600">
         Already have an account?{' '}
-        <Link
-          href="/auth/login"
-          className="text-pink-600 hover:text-pink-700 font-bold"
-        >
+        <Link href="/auth/login" className="text-pink-600 hover:text-pink-700 font-bold">
           Login
         </Link>
       </p>
