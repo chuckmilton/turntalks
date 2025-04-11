@@ -5,8 +5,10 @@ import Rating from '@/components/Rating';
 import { useRouter, useParams } from 'next/navigation';
 import useRequireAuth from '@/hooks/useRequireAuth';
 import SpeechRecognition from 'react-speech-recognition'; // To stop the mic
+import { jsPDF } from 'jspdf'; // Import jsPDF for PDF generation
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faDownload } from '@fortawesome/free-solid-svg-icons';
 
-// Extended Session interface.
 interface Session {
   id: string;
   summary?: string;
@@ -43,15 +45,12 @@ export default function ConclusionPage() {
     if (!sessionData) return;
     setLoadingSummary(true);
     try {
-      // Create a fileInput object if available.
       const fileInput = sessionData.openai_file_id
         ? { file_id: sessionData.openai_file_id }
         : undefined;
-
       const res = await fetch('/api/generate-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Send sessionData and fileInput to the API.
         body: JSON.stringify({ sessionData, fileInput }),
       });
       const result = await res.json();
@@ -59,7 +58,6 @@ export default function ConclusionPage() {
       const summaryText: string = result.summary;
       setSummary(summaryText);
 
-      // Retrieve current user id.
       const { data: authData, error: authError } = await supabase.auth.getSession();
       if (authError || !authData.session?.user) {
         setErrorMessage("Authentication error. Please log in again.");
@@ -67,7 +65,6 @@ export default function ConclusionPage() {
       }
       const userId = authData.session.user.id;
 
-      // Save summary to Supabase including the user_id.
       const { error } = await supabase
         .from('sessions')
         .update({ summary: summaryText, status: 'finished', user_id: userId })
@@ -84,6 +81,54 @@ export default function ConclusionPage() {
     }
     setLoadingSummary(false);
   }
+
+  // Download summary as a nicely formatted PDF.
+  const handleDownloadPDF = () => {
+    if (!summary || !session) return;
+
+    const doc = new jsPDF({
+      unit: 'pt',
+      format: 'letter',
+      compress: true,
+    });
+    
+    // Document header.
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("Session Summary", 40, 40);
+    
+    // Prompt.
+    doc.setFontSize(14);
+    doc.text("Prompt:", 40, 70);
+    doc.setFont("helvetica", "normal");
+    doc.text(doc.splitTextToSize(session.prompt, 520), 40, 90);
+    
+    // End goal if available.
+    if (session.end_goal) {
+      doc.setFont("helvetica", "bold");
+      doc.text("End Goal:", 40, 140);
+      doc.setFont("helvetica", "normal");
+      doc.text(doc.splitTextToSize(session.end_goal, 520), 40, 160);
+    }
+    
+    // Participants.
+    doc.setFont("helvetica", "bold");
+    doc.text("Participants:", 40, session.end_goal ? 210 : 140);
+    doc.setFont("helvetica", "normal");
+    const participantsText = session.participants.join(", ");
+    doc.text(doc.splitTextToSize(participantsText, 520), 40, session.end_goal ? 230 : 160);
+    
+    // Summary.
+    const summaryY = session.end_goal ? 280 : 220;
+    doc.setFont("helvetica", "bold");
+    doc.text("Summary:", 40, summaryY);
+    doc.setFont("helvetica", "normal");
+    const summaryLines = doc.splitTextToSize(summary, 520);
+    doc.text(summaryLines, 40, summaryY + 20);
+
+    // Save the PDF.
+    doc.save('Session-Summary.pdf');
+  };
 
   useEffect(() => {
     async function fetchSession() {
@@ -147,17 +192,26 @@ export default function ConclusionPage() {
         )}
       </div>
 
-      {/* Display Summary or Summary Generation */}
+      {/* Display Summary and Download PDF icon */}
       {loadingSummary ? (
         <p className="mb-6 text-center text-gray-500 italic">Generating Summary...</p>
       ) : (
         summary && (
-          <div
-            className="p-6 border border-gray-300 rounded bg-gray-50 mb-6 animate-fadeIn"
-            style={{ animation: 'fadeIn 1s ease forwards' }}
-          >
-            <h3 className="font-bold text-xl text-gray-700 mb-2">Summary:</h3>
-            <p className="text-gray-700 leading-relaxed">{summary}</p>
+          <div className="mb-6">
+            <div
+              className="p-6 border border-gray-300 rounded bg-gray-50 mb-4 animate-fadeIn"
+              style={{ animation: 'fadeIn 1s ease forwards' }}
+            >
+              <h3 className="font-bold text-xl text-gray-700 mb-2">Summary:</h3>
+              <p className="text-gray-700 leading-relaxed">{summary}</p>
+            </div>
+            <button
+              onClick={handleDownloadPDF}
+              title="Download Summary as PDF"
+              className="flex items-center justify-center"
+            >
+              <FontAwesomeIcon icon={faDownload} className="text-3xl text-green-600 hover:text-green-700 transition" />
+            </button>
           </div>
         )
       )}
