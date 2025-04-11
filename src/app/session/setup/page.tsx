@@ -3,6 +3,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import useRequireAuth from '@/hooks/useRequireAuth';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTimes } from '@fortawesome/free-solid-svg-icons';
 
 function SessionSetupContent() {
   useRequireAuth();
@@ -43,12 +45,12 @@ function SessionSetupContent() {
     setErrorMessage('');
 
     // Retrieve the current user id.
-    const { data: authData, error: authError } = await supabase.auth.getSession();
-    if (authError || !authData.session?.user) {
+    const { data, error: authError } = await supabase.auth.getSession();
+    if (authError || !data.session?.user) {
       setErrorMessage("Authentication error. Please log in again.");
       return;
     }
-    const userId = authData.session.user.id;
+    const userId = data.session.user.id;
 
     // Update session record with participants and time limit.
     const { error } = await supabase
@@ -64,7 +66,7 @@ function SessionSetupContent() {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
+    <div className="w-full max-w-xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
       <h2 className="text-3xl font-bold mb-6 text-gray-800">Session Setup</h2>
       {errorMessage && (
         <div className="mb-6 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
@@ -88,10 +90,10 @@ function SessionSetupContent() {
                 <button
                   type="button"
                   onClick={() => removeParticipant(index)}
-                  className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+                  className="text-red-600 hover:text-red-800 transition"
                   title="Remove participant"
                 >
-                  Remove
+                  <FontAwesomeIcon icon={faTimes} />
                 </button>
               )}
             </div>

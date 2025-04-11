@@ -226,7 +226,7 @@ export default function SessionPage() {
       ) : (
         <>
           <div className="mt-6">
-            <Timer initialTime={session.time_limit ?? 30} onTimeUp={handleTimeUp} key={timerKey} />
+            <Timer initialTime={session.time_limit ?? 60} onTimeUp={handleTimeUp} key={timerKey} />
           </div>
           {isEditing ? (
             // Editing mode: display a textarea with the entire transcript.

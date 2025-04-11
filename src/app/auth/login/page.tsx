@@ -47,7 +47,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
+    <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
       <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Login</h2>
       {/* Display error messages */}
       {errorMessage && (

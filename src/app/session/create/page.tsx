@@ -82,7 +82,7 @@ export default function CreateSessionPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
+    <div className="w-full max-w-xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
       <h2 className="text-3xl font-bold mb-6 text-gray-800">Create a New Session</h2>
       <form onSubmit={handleSubmit}>
         <div className="mb-6">

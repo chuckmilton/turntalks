@@ -1,4 +1,3 @@
-// /src/components/SpeechToText.tsx
 'use client';
 import React, { useState, useEffect } from 'react';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
@@ -9,6 +8,7 @@ interface SpeechToTextProps {
   onResult: (text: string) => void;
   autoStart?: boolean;
   initialTranscript?: string;
+  isActive?: boolean; // If false, the component will not listen.
 }
 
 // A simple component for animating each new word.
@@ -20,8 +20,9 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
   onResult,
   autoStart = true,
   initialTranscript = '',
+  isActive = true,
 }) => {
-  // Holds the confirmed/previous words.
+  // Holds the confirmed/accumulated words.
   const [renderedWords, setRenderedWords] = useState<string[]>(
     initialTranscript.trim() ? initialTranscript.trim().split(/\s+/) : []
   );
@@ -29,22 +30,29 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const { transcript, resetTranscript } = useSpeechRecognition();
 
-  // Start listening on mount (or when autoStart changes) unless we have an initial transcript.
+  // Combined effect: start or stop listening based on autoStart, isActive, and isMuted.
   useEffect(() => {
-    if (autoStart && !isMuted) {
-      if (!initialTranscript) {
-        resetTranscript();
+    if (isActive && autoStart) {
+      if (!isMuted) {
+        // When unmuting, add a short delay before starting.
+        const timeoutId = setTimeout(() => {
+          resetTranscript();
+          SpeechRecognition.startListening({ continuous: true });
+        }, 50);
+        return () => clearTimeout(timeoutId);
+      } else {
+        SpeechRecognition.stopListening();
       }
-      SpeechRecognition.startListening({ continuous: true });
+    } else {
+      SpeechRecognition.stopListening();
     }
     return () => {
       SpeechRecognition.stopListening();
     };
-  }, [autoStart, resetTranscript, initialTranscript, isMuted]);
+  }, [isActive, autoStart, isMuted, resetTranscript]);
 
   // Effect: Append new words from the current transcript.
   useEffect(() => {
-    // Split transcript into words.
     const newWords = transcript.trim() === '' ? [] : transcript.trim().split(/\s+/);
     if (newWords.length > renderedWords.length) {
       setRenderedWords((prev) => [...prev, ...newWords.slice(prev.length)]);
@@ -52,21 +60,12 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
     onResult(renderedWords.join(' '));
   }, [transcript, onResult, renderedWords.length]);
 
-  // Update the displayed words if initialTranscript changes (e.g., after editing).
+  // Update renderedWords if initialTranscript changes.
   useEffect(() => {
     if (initialTranscript) {
       setRenderedWords(initialTranscript.trim().split(/\s+/));
     }
   }, [initialTranscript]);
-
-  // Monitor the isMuted state. When muted, stop listening; when unmuted, resume.
-  useEffect(() => {
-    if (isMuted) {
-      SpeechRecognition.stopListening();
-    } else if (autoStart) {
-      SpeechRecognition.startListening({ continuous: true });
-    }
-  }, [isMuted, autoStart]);
 
   return (
     <div className="p-6 bg-white border border-gray-300 rounded-lg shadow-md transition hover:shadow-lg">
