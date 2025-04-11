@@ -4,15 +4,16 @@ import { supabase } from '@/lib/supabaseClient';
 import Rating from '@/components/Rating';
 import { useRouter, useParams } from 'next/navigation';
 import useRequireAuth from '@/hooks/useRequireAuth';
-import SpeechRecognition from 'react-speech-recognition'; // Added import
+import SpeechRecognition from 'react-speech-recognition'; // To stop the mic
 
-// Define a minimal interface for the session data.
+// Extended Session interface.
 interface Session {
   id: string;
   summary?: string;
   rating?: number;
   openai_file_id?: string;
   prompt: string;
+  end_goal?: string; // Optional end goal.
   participants: string[];
   num_questions: number;
   time_limit: number;
@@ -29,10 +30,10 @@ export default function ConclusionPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [summary, setSummary] = useState<string>('');
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const router = useRouter();
 
-  // Stop the mic when this page loads.
+  // Ensure the mic is off when this page loads.
   useEffect(() => {
     SpeechRecognition.stopListening();
   }, []);
@@ -42,7 +43,7 @@ export default function ConclusionPage() {
     if (!sessionData) return;
     setLoadingSummary(true);
     try {
-      // If the session record includes an OpenAI file ID, create a fileInput object.
+      // Create a fileInput object if available.
       const fileInput = sessionData.openai_file_id
         ? { file_id: sessionData.openai_file_id }
         : undefined;
@@ -50,7 +51,7 @@ export default function ConclusionPage() {
       const res = await fetch('/api/generate-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Send both sessionData and fileInput to the API.
+        // Send sessionData and fileInput to the API.
         body: JSON.stringify({ sessionData, fileInput }),
       });
       const result = await res.json();
@@ -97,7 +98,7 @@ export default function ConclusionPage() {
         const sessionData = data as Session;
         setSession(sessionData);
         if (sessionData.summary) {
-          setSummary(sessionData.summary as string);
+          setSummary(sessionData.summary);
         } else {
           await handleGenerateSummary(sessionData);
         }
@@ -117,6 +118,36 @@ export default function ConclusionPage() {
         </div>
       )}
       <h2 className="text-3xl font-bold mb-6 text-gray-800">Session Summary</h2>
+      
+      {/* Display Prompt */}
+      <div className="mb-6">
+        <h3 className="font-bold text-xl text-gray-700 mb-2">Prompt:</h3>
+        <p className="text-gray-700">{session.prompt}</p>
+      </div>
+      
+      {/* Display End Goal if available */}
+      {session.end_goal && (
+        <div className="mb-6">
+          <h3 className="font-bold text-xl text-gray-700 mb-2">End Goal:</h3>
+          <p className="text-gray-700">{session.end_goal}</p>
+        </div>
+      )}
+
+      {/* Display Participants */}
+      <div className="mb-6">
+        <h3 className="font-bold text-xl text-gray-700 mb-2">Participants:</h3>
+        {session.participants.length > 0 ? (
+          <ul className="list-disc list-inside text-gray-700">
+            {session.participants.map((participant, index) => (
+              <li key={index}>{participant}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-700">No participants listed.</p>
+        )}
+      </div>
+
+      {/* Display Summary or Summary Generation */}
       {loadingSummary ? (
         <p className="mb-6 text-center text-gray-500 italic">Generating Summary...</p>
       ) : (
@@ -130,10 +161,13 @@ export default function ConclusionPage() {
           </div>
         )
       )}
+
+      {/* Rating Section */}
       <div className="mb-6">
         <h3 className="font-bold text-xl mb-2 text-gray-800">Rate the Session:</h3>
         <Rating sessionId={sessionId} initialRating={session.rating} />
       </div>
+
       <button
         onClick={() => router.push('/dashboard')}
         className="w-full py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
