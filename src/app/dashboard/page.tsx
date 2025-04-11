@@ -18,6 +18,14 @@ interface Session {
   [key: string]: unknown;
 }
 
+interface User {
+  id: string;
+  user_metadata?: {
+    display_name?: string;
+    [key: string]: any;
+  };
+}
+
 export default function DashboardPage() {
   useRequireAuth();
 
@@ -25,6 +33,20 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Fetch current user.
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Error fetching user:", error.message);
+      } else {
+        setUser(user);
+      }
+    };
+    fetchUser();
+  }, []);
 
   // Fetch sessions from Supabase.
   const fetchSessions = async () => {
@@ -86,20 +108,28 @@ export default function DashboardPage() {
     setSelectAll(false);
   };
 
-  // Logout handler using the same logic as your other project.
+  // Logout handler.
   const handleLogout = async () => {
-    // Call signOut, ignoring any errors (including 403 errors).
     await supabase.auth.signOut();
-    // Redirect the user after sign-out.
     router.push('/auth/login');
   };
 
   return (
     <div className="bg-white rounded-xl shadow p-6 animate-fadeInUp">
-      <h2 className="text-3xl font-bold mb-6 text-gray-800">Dashboard</h2>
-
-      {/* Logout Button */}
+      {/* Welcome message using display name only */}
+      <h2 className="text-3xl font-bold mb-2 text-gray-800">
+        {user && user.user_metadata?.display_name
+          ? `Welcome, ${user.user_metadata.display_name}`
+          : "Welcome!"}
+      </h2>
       <div className="mb-6 text-right">
+        {/* Link to Profile/Settings page */}
+        <Link
+          href="/profile"
+          className="mr-4 px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+        >
+          Profile
+        </Link>
         <button
           onClick={handleLogout}
           className="px-4 py-2 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
