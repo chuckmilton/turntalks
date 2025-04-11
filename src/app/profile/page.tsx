@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import useRequireAuth from '@/hooks/useRequireAuth';
 import { useRouter } from 'next/navigation';
@@ -9,18 +9,18 @@ export default function ProfilePage() {
   const router = useRouter();
 
   // Profile update state.
-  const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
   
   // Change password state.
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState<string>('');
   
   // Loading and messages.
-  const [loading, setLoading] = useState(true);
-  const [profileMessage, setProfileMessage] = useState('');
-  const [passwordMessage, setPasswordMessage] = useState('');
-  const [deleteMessage, setDeleteMessage] = useState('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [profileMessage, setProfileMessage] = useState<string>('');
+  const [passwordMessage, setPasswordMessage] = useState<string>('');
+  const [deleteMessage, setDeleteMessage] = useState<string>('');
 
   // Fetch current user and fill in the fields.
   useEffect(() => {
@@ -38,7 +38,7 @@ export default function ProfilePage() {
   }, []);
 
   // Handle updating profile info.
-  const handleProfileUpdate = async (e: React.FormEvent) => {
+  const handleProfileUpdate = async (e: FormEvent) => {
     e.preventDefault();
     setProfileMessage('');
     // Update user profile (display name and email).
@@ -54,7 +54,7 @@ export default function ProfilePage() {
   };
 
   // Handle changing password.
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
     setPasswordMessage('');
     if (newPassword !== confirmNewPassword) {
@@ -89,8 +89,12 @@ export default function ProfilePage() {
       // Successfully deleted user, so sign out and redirect.
       await supabase.auth.signOut();
       router.push('/auth/signup');
-    } catch (err: any) {
-      setDeleteMessage(`Error: ${err.message}`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setDeleteMessage(`Error: ${err.message}`);
+      } else {
+        setDeleteMessage("An unknown error occurred.");
+      }
     }
   };
 

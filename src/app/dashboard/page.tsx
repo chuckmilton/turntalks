@@ -22,7 +22,7 @@ interface User {
   id: string;
   user_metadata?: {
     display_name?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
