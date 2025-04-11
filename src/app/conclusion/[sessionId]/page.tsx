@@ -4,13 +4,20 @@ import { supabase } from '@/lib/supabaseClient';
 import Rating from '@/components/Rating';
 import { useRouter, useParams } from 'next/navigation';
 import useRequireAuth from '@/hooks/useRequireAuth';
+import SpeechRecognition from 'react-speech-recognition'; // Added import
 
-// Added optional openai_file_id field to store the file reference.
+// Define a minimal interface for the session data.
 interface Session {
   id: string;
   summary?: string;
   rating?: number;
   openai_file_id?: string;
+  prompt: string;
+  participants: string[];
+  num_questions: number;
+  time_limit: number;
+  answers?: unknown[];
+  current_question?: string;
   [key: string]: unknown;
 }
 
@@ -24,6 +31,11 @@ export default function ConclusionPage() {
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
+
+  // Stop the mic when this page loads.
+  useEffect(() => {
+    SpeechRecognition.stopListening();
+  }, []);
 
   // Function to auto-generate summary if it doesn't exist.
   async function handleGenerateSummary(sessionData: Session | null) {
@@ -82,11 +94,12 @@ export default function ConclusionPage() {
       if (error) {
         setErrorMessage(error.message);
       } else {
-        setSession(data as Session);
-        if ((data as Session).summary) {
-          setSummary((data as Session).summary as string);
+        const sessionData = data as Session;
+        setSession(sessionData);
+        if (sessionData.summary) {
+          setSummary(sessionData.summary as string);
         } else {
-          await handleGenerateSummary(data as Session);
+          await handleGenerateSummary(sessionData);
         }
       }
     }
