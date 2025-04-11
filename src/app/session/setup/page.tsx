@@ -31,6 +31,13 @@ function SessionSetupContent() {
     setParticipants([...participants, '']);
   };
 
+  const removeParticipant = (index: number) => {
+    // Ensure that there is at least one participant remaining.
+    if (participants.length > 1) {
+      setParticipants((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -68,15 +75,26 @@ function SessionSetupContent() {
         <div className="mb-6">
           <label className="block font-semibold mb-2">Participants:</label>
           {participants.map((participant, index) => (
-            <input
-              key={index}
-              type="text"
-              placeholder={`Participant ${index + 1} name`}
-              value={participant}
-              onChange={(e) => handleParticipantChange(index, e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-3 mb-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
-              required
-            />
+            <div key={index} className="flex items-center gap-2 mb-2">
+              <input
+                type="text"
+                placeholder={`Participant ${index + 1} name`}
+                value={participant}
+                onChange={(e) => handleParticipantChange(index, e.target.value)}
+                className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                required
+              />
+              {participants.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeParticipant(index)}
+                  className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+                  title="Remove participant"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           ))}
           <button
             type="button"
@@ -87,7 +105,9 @@ function SessionSetupContent() {
           </button>
         </div>
         <div className="mb-6">
-          <label className="block font-semibold mb-2">Time Limit per Question (seconds):</label>
+          <label className="block font-semibold mb-2">
+            Time Limit per Question (seconds):
+          </label>
           <input
             type="number"
             value={timeLimit.toString()}
@@ -95,7 +115,6 @@ function SessionSetupContent() {
             className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
             required
           />
-
         </div>
         <button
           type="submit"
