@@ -25,9 +25,9 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
   const [renderedWords, setRenderedWords] = useState<string[]>(
     initialTranscript.trim() ? initialTranscript.trim().split(/\s+/) : []
   );
-  // New state for controlling mute/unmute.
+  // State for controlling mute/unmute.
   const [isMuted, setIsMuted] = useState<boolean>(false);
-  const { transcript, resetTranscript, listening } = useSpeechRecognition();
+  const { transcript, resetTranscript } = useSpeechRecognition();
 
   // Start listening on mount (or when autoStart changes) unless we have an initial transcript.
   useEffect(() => {
@@ -45,8 +45,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
   // Effect: Append new words from the current transcript.
   useEffect(() => {
     // Split transcript into words.
-    const newWords =
-      transcript.trim() === '' ? [] : transcript.trim().split(/\s+/);
+    const newWords = transcript.trim() === '' ? [] : transcript.trim().split(/\s+/);
     if (newWords.length > renderedWords.length) {
       setRenderedWords((prev) => [...prev, ...newWords.slice(prev.length)]);
     }
