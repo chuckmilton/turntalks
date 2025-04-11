@@ -1,3 +1,4 @@
+// SessionPage.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -47,15 +48,21 @@ export default function SessionPage() {
   const { sessionId } = params as { sessionId: string };
   const router = useRouter();
 
-  // Set session state with the Session interface.
+  // Session and question states.
   const [session, setSession] = useState<Session | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>('');
   const [currentTurn, setCurrentTurn] = useState<number>(0);
-  const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [loadingQuestion, setLoadingQuestion] = useState<boolean>(false);
   const [timerKey, setTimerKey] = useState<number>(0);
   const [answerStarted, setAnswerStarted] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  const [finalTranscript, setFinalTranscript] = useState<string>('');
+  const [liveTranscript, setLiveTranscript] = useState<string>('');
+
+  // Editing mode state.
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editedText, setEditedText] = useState<string>('');
 
   useEffect(() => {
     async function fetchSession() {
@@ -105,6 +112,7 @@ export default function SessionPage() {
     fetchSession();
   }, [sessionId]);
 
+  // When finishing an answer, use the combination of the final and live transcript.
   const handleAnswer = async (answerText: string) => {
     if (!session) return;
     setErrorMessage('');
@@ -173,18 +181,21 @@ export default function SessionPage() {
     }
     setSession(updatedSession as Session);
     setCurrentTurn(newTurn);
+    // Reset transcript states for the next answer.
+    setFinalTranscript('');
     setLiveTranscript('');
     setTimerKey(prev => prev + 1);
     setAnswerStarted(false);
     setCurrentQuestion((updatedSession as Session).current_question as string);
   };
 
+  // Combine transcripts when submitting the answer.
   const handleTimeUp = () => {
-    handleAnswer(liveTranscript);
+    handleAnswer(finalTranscript + liveTranscript);
   };
 
   const endAnswerManually = () => {
-    handleAnswer(liveTranscript);
+    handleAnswer(finalTranscript + liveTranscript);
   };
 
   const finishSession = () => {
@@ -217,15 +228,64 @@ export default function SessionPage() {
           <div className="mt-6">
             <Timer initialTime={session.time_limit ?? 30} onTimeUp={handleTimeUp} key={timerKey} />
           </div>
-          <div className="mt-6">
-            <SpeechToText onResult={(text: string) => setLiveTranscript(text)} autoStart={true} />
-          </div>
-          <button
-            onClick={endAnswerManually}
-            className="mt-6 px-6 py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
-          >
-            End Answer
-          </button>
+          {isEditing ? (
+            // Editing mode: display a textarea with the entire transcript.
+            <div className="mt-6">
+              <textarea
+                className="w-full p-2 border rounded"
+                rows={4}
+                value={editedText}
+                onChange={(e) => setEditedText(e.target.value)}
+              />
+              <button
+                onClick={() => {
+                  // On finishing edit, update the confirmed transcript and clear the live part.
+                  setFinalTranscript(editedText);
+                  setLiveTranscript('');
+                  setIsEditing(false);
+                }}
+                className="mt-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+              >
+                Finish Editing
+              </button>
+            </div>
+          ) : (
+            // Normal mode: show only the SpeechToText component and the controls.
+            <>
+              <div className="mt-6">
+                <SpeechToText
+                  onResult={(text: string) => {
+                    if (!isEditing) {
+                      // Compute new live text by removing the confirmed portion.
+                      if (text.startsWith(finalTranscript)) {
+                        setLiveTranscript(text.slice(finalTranscript.length));
+                      } else {
+                        setLiveTranscript(text);
+                      }
+                    }
+                  }}
+                  autoStart={!isEditing}
+                  initialTranscript={finalTranscript}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  // Enter edit mode with the current full transcript.
+                  setEditedText(finalTranscript + liveTranscript);
+                  setIsEditing(true);
+                }}
+                className="mt-6 px-6 py-3 bg-yellow-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+              >
+                Edit Answer
+              </button>
+              <button
+                onClick={endAnswerManually}
+                className="mt-6 px-6 py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+              >
+                End Answer
+              </button>
+            </>
+          )}
         </>
       )}
       {loadingQuestion && (
