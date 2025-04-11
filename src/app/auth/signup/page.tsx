@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import useRedirectIfAuth from '@/hooks/useRedirectIfAuth';
@@ -8,7 +7,6 @@ import useRedirectIfAuth from '@/hooks/useRedirectIfAuth';
 export default function SignupPage() {
   useRedirectIfAuth();
 
-  const router = useRouter();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
