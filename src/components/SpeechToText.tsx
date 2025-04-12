@@ -66,7 +66,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="p-6 bg-white bg-gradient-to-br from-white to-gray-50 border border-gray-300 rounded-lg shadow-lg hover:shadow-2xl transition-shadow"
+      className="p-6 bg-white bg-gradient-to-br from-white to-gray-50 border border-gray-300 rounded-lg shadow-lg"
     >
       {/* Mute Toggle Button */}
       <div className="flex items-center justify-end mb-2">

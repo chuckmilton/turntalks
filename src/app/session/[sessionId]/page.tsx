@@ -500,9 +500,11 @@ export default function SessionPage() {
       <motion.button
         onClick={() => {
           playButtonSound();
-          finishSession();
+          if (window.confirm("Are you sure you want to end the entire session?")) {
+            finishSession();
+          }
         }}
-        className="absolute bottom-6 right-6 px-6 py-3 bg-red-600 text-white font-semibold rounded-md shadow hover:shadow-xl transition-transform hover:-translate-y-1"
+        className="absolute bottom-3 right-3 px-6 flex items-center px-4 py-2 text-red-600 font-semibold rounded-md transition hover:underline"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8, duration: 0.6 }}

@@ -179,7 +179,11 @@ export default function DashboardPage() {
             Profile
           </Link>
           <button
-            onClick={handleLogout}
+            onClick={() => {
+              if (window.confirm("Are you sure you want to log out?")) {
+                handleLogout(); // Only log out if they confirm
+              }
+            }}
             className="flex items-center px-4 py-2 bg-pink-700 rounded-md shadow hover:shadow-xl transition transform hover:-translate-y-1"
           >
             <svg
