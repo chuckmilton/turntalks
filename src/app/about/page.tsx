@@ -38,7 +38,7 @@ export default function AboutPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.8 }}
           >
-            TurnTalks is more than just a platform—it's a revolution in how we spark creativity and meaningful conversations.
+            TurnTalks is more than just a platform&mdash;it&apos;s a revolution in how we spark creativity and meaningful conversations.
           </motion.p>
         </div>
       </motion.section>
@@ -63,7 +63,7 @@ export default function AboutPage() {
           <div className="bg-white rounded-xl p-8 shadow hover:shadow-xl transition-shadow duration-300">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Our Mission</h2>
             <p className="text-lg text-gray-700">
-              Our mission is to create an intuitive environment that bridges technology and creativity—making interactive sessions dynamic, seamless, and impactful for everyone.
+              Our mission is to create an intuitive environment that bridges technology and creativity&mdash;making interactive sessions dynamic, seamless, and impactful for everyone.
             </p>
           </div>
         </div>

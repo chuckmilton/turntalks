@@ -27,11 +27,6 @@ async function fetchGeneratedQuestion(
   return data.question;
 }
 
-// Helper function to truncate text.
-function truncate(text: string, limit = 50) {
-  return text.length > limit ? text.substring(0, limit) + "..." : text;
-}
-
 interface Session {
   id: string;
   summary?: string;
@@ -44,14 +39,6 @@ interface Session {
   answers?: unknown[];
   current_question?: string;
   [key: string]: unknown;
-}
-
-interface User {
-  id: string;
-  user_metadata?: {
-    display_name?: string;
-    [key: string]: unknown;
-  };
 }
 
 export default function SessionPage() {
