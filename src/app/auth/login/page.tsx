@@ -7,27 +7,26 @@ import useRedirectIfAuth from '@/hooks/useRedirectIfAuth';
 
 export default function LoginPage() {
   useRedirectIfAuth();
-
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [resetMessage, setResetMessage] = useState('');
 
+  // Standard Email/Password login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(''); // Clear previous errors
-    setResetMessage(''); // Clear previous reset messages
-
+    setErrorMessage('');
+    setResetMessage('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      // Display the error inline
       setErrorMessage(error.message);
     } else {
       router.push('/dashboard');
     }
   };
 
+  // Forgot Password
   const handleForgotPassword = async () => {
     setErrorMessage('');
     setResetMessage('');
@@ -36,8 +35,7 @@ export default function LoginPage() {
       return;
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      // Update this URL to the appropriate password reset page in your app.
-      redirectTo: 'http://localhost:3000/auth/reset',
+      redirectTo: 'http://localhost:3000/auth/reset', // Adjust as needed for production.
     });
     if (error) {
       setErrorMessage(error.message);
@@ -46,10 +44,18 @@ export default function LoginPage() {
     }
   };
 
+  // Google login using Supabase’s default configuration.
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      // No override for redirect URL or extra queryParams—this uses the default.
+    });
+    if (error) setErrorMessage(error.message);
+  };
+
   return (
     <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
       <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Login</h2>
-      {/* Display error messages */}
       {errorMessage && (
         <div className="mb-6 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
           {errorMessage}
@@ -60,6 +66,17 @@ export default function LoginPage() {
           {resetMessage}
         </div>
       )}
+
+      {/* Google Login Button with your custom icon */}
+      <button
+        type="button"
+        onClick={handleGoogleLogin}
+        className="w-full flex items-center justify-center gap-3 py-3 mb-6 border border-gray-300 rounded-md shadow hover:shadow-lg transition-colors hover:bg-gray-100"
+      >
+        <img src="/google-icon.svg" alt="Google Logo" className="w-5 h-5" />
+        <span>Sign in with Google</span>
+      </button>
+
       <form onSubmit={handleLogin}>
         <label className="block mb-4">
           <span className="block text-gray-700 font-semibold mb-1">Email:</span>

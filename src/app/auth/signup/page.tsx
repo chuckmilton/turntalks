@@ -16,8 +16,8 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(''); // Clear previous errors
-    setSuccessMessage(''); // Clear previous success message
+    setErrorMessage('');
+    setSuccessMessage('');
 
     if (password !== confirmPassword) {
       setErrorMessage("Passwords do not match.");
@@ -27,13 +27,10 @@ export default function SignupPage() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { display_name: displayName },
-      },
+      options: { data: { display_name: displayName } },
     });
 
     if (error) {
-      // Check for duplicate account errors.
       if (
         error.message.toLowerCase().includes("duplicate") ||
         error.message.toLowerCase().includes("already registered")
@@ -49,6 +46,15 @@ export default function SignupPage() {
     }
   };
 
+  // Google Signup using Supabase default flow
+  const handleGoogleSignup = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      // Use the default Supabase callback URL by not overriding redirectTo or queryParams.
+    });
+    if (error) setErrorMessage(error.message);
+  };
+
   return (
     <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
       <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
@@ -62,7 +68,18 @@ export default function SignupPage() {
           {successMessage}
         </div>
       )}
-      {/* Only display the sign-up form if there's no success message */}
+
+      {/* Google Signup Button with your custom Google icon */}
+      <button
+        type="button"
+        onClick={handleGoogleSignup}
+        className="w-full flex items-center justify-center gap-3 py-3 mb-6 border border-gray-300 rounded-md shadow hover:shadow-lg transition-colors hover:bg-gray-100"
+      >
+        <img src="/google-icon.svg" alt="Google Logo" className="w-5 h-5" />
+        <span>Sign up with Google</span>
+      </button>
+
+      {/* Only display the email/password form if there's no success message */}
       {!successMessage && (
         <form onSubmit={handleSignup}>
           <label className="block mb-4">
