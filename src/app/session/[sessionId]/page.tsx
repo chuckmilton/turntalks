@@ -1,4 +1,3 @@
-// SessionPage.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -8,7 +7,7 @@ import SpeechToText from '@/components/SpeechToText';
 import Timer from '@/components/Timer';
 import useRequireAuth from '@/hooks/useRequireAuth';
 
-// Updated helper to pass file context
+// Updated helper to pass file context.
 async function fetchGeneratedQuestion(
   prompt: string,
   context: string,
@@ -26,14 +25,12 @@ async function fetchGeneratedQuestion(
   return data.question;
 }
 
-// Define a minimal interface for the session data.
 interface Session {
   id: string;
   summary?: string;
   rating?: number;
   openai_file_id?: string;
   prompt: string;
-  // The following are added to fix type errors
   participants: string[];
   num_questions: number;
   time_limit: number;
@@ -48,7 +45,7 @@ export default function SessionPage() {
   const { sessionId } = params as { sessionId: string };
   const router = useRouter();
 
-  // Session and question states.
+  // Session and question state.
   const [session, setSession] = useState<Session | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>('');
   const [currentTurn, setCurrentTurn] = useState<number>(0);
@@ -57,6 +54,7 @@ export default function SessionPage() {
   const [answerStarted, setAnswerStarted] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  // Transcript states for answer transcription.
   const [finalTranscript, setFinalTranscript] = useState<string>('');
   const [liveTranscript, setLiveTranscript] = useState<string>('');
 
@@ -64,6 +62,24 @@ export default function SessionPage() {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedText, setEditedText] = useState<string>('');
 
+  // State flag to ensure a question isn't regenerated repeatedly.
+  const [hasGeneratedQuestion, setHasGeneratedQuestion] = useState<boolean>(false);
+
+  // ---- Audio for the QUESTION TTS ----
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+  // Cleanup audio on unmount (or when navigating away).
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.currentTime = 0;
+      }
+    };
+  }, [audioElement]);
+
+  // Fetch session details on load.
   useEffect(() => {
     async function fetchSession() {
       const { data, error } = await supabase
@@ -76,7 +92,7 @@ export default function SessionPage() {
       } else {
         const sessionData = data as Session;
         setSession(sessionData);
-        if (!sessionData.current_question) {
+        if (!sessionData.current_question && !hasGeneratedQuestion) {
           try {
             const fileInput = sessionData.openai_file_id
               ? { file_id: sessionData.openai_file_id }
@@ -97,6 +113,7 @@ export default function SessionPage() {
               return;
             }
             setCurrentQuestion(question);
+            setHasGeneratedQuestion(true);
           } catch (err: unknown) {
             if (err instanceof Error) {
               setErrorMessage(err.message);
@@ -110,9 +127,84 @@ export default function SessionPage() {
       }
     }
     fetchSession();
-  }, [sessionId]);
+  }, [sessionId, hasGeneratedQuestion]);
 
-  // When finishing an answer, use the combination of the final and live transcript.
+  // Automatically generate and play TTS for the question when it loads.
+  useEffect(() => {
+    if (currentQuestion) {
+      // First, stop any previously playing audio.
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.currentTime = 0;
+      }
+      // Generate new audio for the question.
+      (async () => {
+        try {
+          const res = await fetch('/api/generate-speech', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: currentQuestion,
+              voice: 'coral', // Adjust as desired.
+              instructions: 'Speak clearly in a neutral tone.'
+            }),
+          });
+          if (!res.ok) {
+            setErrorMessage("Failed to generate question audio.");
+            return;
+          }
+          const audioBuffer = await res.arrayBuffer();
+          const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(blob);
+          const audio = new Audio(audioUrl);
+          // When audio ends, update state so that the play button reappears.
+          audio.addEventListener('ended', () => {
+            setIsPlaying(false);
+          });
+          // Auto-play the audio.
+          audio.play().then(() => {
+            setAudioElement(audio);
+            setIsPlaying(true);
+          }).catch((err) => {
+            console.error("Autoplay blocked for question audio:", err);
+            setAudioElement(audio);
+            setIsPlaying(false);
+          });
+        } catch (err: unknown) {
+          if (err instanceof Error) {
+            setErrorMessage(err.message);
+          } else {
+            setErrorMessage("An unexpected error occurred while generating question audio.");
+          }
+        }
+      })();
+    }
+  }, [currentQuestion]);
+
+  // Audio control handlers for question TTS.
+  const handlePlay = () => {
+    if (audioElement) {
+      audioElement.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handlePause = () => {
+    if (audioElement) {
+      audioElement.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleStop = () => {
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      setIsPlaying(false);
+    }
+  };
+
+  // Handle answer submission.
   const handleAnswer = async (answerText: string) => {
     if (!session) return;
     setErrorMessage('');
@@ -132,7 +224,7 @@ export default function SessionPage() {
         .from('sessions')
         .update({ answers: newAnswers, status: 'finished', user_id: userId })
         .eq('id', sessionId)
-        .select('*')
+        .select()
         .single();
       if (error) {
         setErrorMessage(error.message);
@@ -181,7 +273,7 @@ export default function SessionPage() {
     }
     setSession(updatedSession as Session);
     setCurrentTurn(newTurn);
-    // Reset transcript states for the next answer.
+    // Reset transcription states for next turn.
     setFinalTranscript('');
     setLiveTranscript('');
     setTimerKey(prev => prev + 1);
@@ -189,7 +281,6 @@ export default function SessionPage() {
     setCurrentQuestion((updatedSession as Session).current_question as string);
   };
 
-  // Combine transcripts when submitting the answer.
   const handleTimeUp = () => {
     handleAnswer(finalTranscript + liveTranscript);
   };
@@ -202,7 +293,8 @@ export default function SessionPage() {
     router.push(`/conclusion/${sessionId}`);
   };
 
-  if (!session) return <p className="text-center mt-10">Loading session...</p>;
+  if (!session)
+    return <p className="text-center mt-10">Loading session...</p>;
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
@@ -229,7 +321,6 @@ export default function SessionPage() {
             <Timer initialTime={session.time_limit ?? 60} onTimeUp={handleTimeUp} key={timerKey} />
           </div>
           {isEditing ? (
-            // Editing mode: display a textarea with the entire transcript.
             <div className="mt-6">
               <textarea
                 className="w-full p-2 border rounded"
@@ -239,7 +330,6 @@ export default function SessionPage() {
               />
               <button
                 onClick={() => {
-                  // On finishing edit, update the confirmed transcript and clear the live part.
                   setFinalTranscript(editedText);
                   setLiveTranscript('');
                   setIsEditing(false);
@@ -250,13 +340,12 @@ export default function SessionPage() {
               </button>
             </div>
           ) : (
-            // Normal mode: show only the SpeechToText component and the controls.
             <>
               <div className="mt-6">
                 <SpeechToText
+                  key={timerKey} // key forces remount when timerKey changes, resetting transcription.
                   onResult={(text: string) => {
                     if (!isEditing) {
-                      // Compute new live text by removing the confirmed portion.
                       if (text.startsWith(finalTranscript)) {
                         setLiveTranscript(text.slice(finalTranscript.length));
                       } else {
@@ -270,7 +359,6 @@ export default function SessionPage() {
               </div>
               <button
                 onClick={() => {
-                  // Enter edit mode with the current full transcript.
                   setEditedText(finalTranscript + liveTranscript);
                   setIsEditing(true);
                 }}
@@ -289,9 +377,7 @@ export default function SessionPage() {
         </>
       )}
       {loadingQuestion && (
-        <p className="mt-4 text-center text-gray-500 italic">
-          Generating next question...
-        </p>
+        <p className="mt-4 text-center text-gray-500 italic">Generating next question...</p>
       )}
       <button
         onClick={finishSession}

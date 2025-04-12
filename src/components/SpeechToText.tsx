@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faVolumeMute, faVolumeUp } from '@fortawesome/free-solid-svg-icons';
@@ -8,13 +8,8 @@ interface SpeechToTextProps {
   onResult: (text: string) => void;
   autoStart?: boolean;
   initialTranscript?: string;
-  isActive?: boolean; // If false, the component will not listen.
+  isActive?: boolean; // if false, the component will not listen.
 }
-
-// A simple component for animating each new word.
-const AnimatedWord: React.FC<{ word: string }> = ({ word }) => (
-  <span className="inline-block mr-1 animate-fadeIn">{word}</span>
-);
 
 const SpeechToText: React.FC<SpeechToTextProps> = ({
   onResult,
@@ -22,49 +17,49 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
   initialTranscript = '',
   isActive = true,
 }) => {
-  // Holds the confirmed/accumulated words.
-  const [renderedWords, setRenderedWords] = useState<string[]>(
-    initialTranscript.trim() ? initialTranscript.trim().split(/\s+/) : []
-  );
-  // State for controlling mute/unmute.
+  // accumulatedTranscript holds all recognized text for this turn.
+  const [accumulatedTranscript, setAccumulatedTranscript] = useState<string>(initialTranscript.trim());
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const { transcript, resetTranscript } = useSpeechRecognition();
 
-  // Combined effect: start or stop listening based on autoStart, isActive, and isMuted.
+  // Use a ref to store the last processed transcript.
+  const prevTranscriptRef = useRef<string>(initialTranscript.trim());
+
+  // Effect to start or stop listening based on isActive, autoStart and isMuted.
   useEffect(() => {
-    if (isActive && autoStart) {
-      if (!isMuted) {
-        // When unmuting, add a short delay before starting.
-        const timeoutId = setTimeout(() => {
-          resetTranscript();
-          SpeechRecognition.startListening({ continuous: true });
-        }, 50);
-        return () => clearTimeout(timeoutId);
-      } else {
-        SpeechRecognition.stopListening();
-      }
+    if (isActive && autoStart && !isMuted) {
+      SpeechRecognition.startListening({ continuous: true });
     } else {
       SpeechRecognition.stopListening();
     }
     return () => {
       SpeechRecognition.stopListening();
     };
-  }, [isActive, autoStart, isMuted, resetTranscript]);
+  }, [isActive, autoStart, isMuted]);
 
-  // Effect: Append new words from the current transcript.
+  // When transcript updates, if non-empty, update the accumulated transcript.
   useEffect(() => {
-    const newWords = transcript.trim() === '' ? [] : transcript.trim().split(/\s+/);
-    if (newWords.length > renderedWords.length) {
-      setRenderedWords((prev) => [...prev, ...newWords.slice(prev.length)]);
+    const newText = transcript.trim();
+    if (newText) {
+      // If the new transcript is different than what we processed last time,
+      // then update the accumulated transcript.
+      if (newText !== prevTranscriptRef.current) {
+        // Here we simply replace the text with the new value.
+        // (Alternatively, you could append if you prefer: prevTranscriptRef.current + ' ' + newText)
+        prevTranscriptRef.current = newText;
+        setAccumulatedTranscript(newText);
+        onResult(newText);
+      }
     }
-    onResult(renderedWords.join(' '));
-  }, [transcript, onResult, renderedWords.length]);
+    // If transcript is empty (e.g. while muted or restarted), do nothing.
+  }, [transcript, onResult]);
 
-  // Update renderedWords if initialTranscript changes.
+  // When initialTranscript changes (for example, after finishing an edit),
+  // update the accumulated transcript accordingly.
   useEffect(() => {
-    if (initialTranscript) {
-      setRenderedWords(initialTranscript.trim().split(/\s+/));
-    }
+    const trimmed = initialTranscript.trim();
+    setAccumulatedTranscript(trimmed);
+    prevTranscriptRef.current = trimmed;
   }, [initialTranscript]);
 
   return (
@@ -83,11 +78,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
           )}
         </button>
       </div>
-      <p className="text-gray-800 text-lg">
-        {renderedWords.map((word, index) => (
-          <AnimatedWord key={index} word={word} />
-        ))}
-      </p>
+      <p className="text-gray-800 text-lg">{accumulatedTranscript}</p>
     </div>
   );
 };
