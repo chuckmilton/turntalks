@@ -4,10 +4,15 @@ import { supabase } from '@/lib/supabaseClient';
 import Rating from '@/components/Rating';
 import { useRouter, useParams } from 'next/navigation';
 import useRequireAuth from '@/hooks/useRequireAuth';
-import SpeechRecognition from 'react-speech-recognition'; // To stop the mic
-import { jsPDF } from 'jspdf'; // Import jsPDF for PDF generation
+import SpeechRecognition from 'react-speech-recognition'; // to ensure mic stops
+import { jsPDF } from 'jspdf'; // for PDF generation
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDownload } from '@fortawesome/free-solid-svg-icons';
+import {
+  faDownload,
+  faPlay,
+  faPause,
+  faStop,
+} from '@fortawesome/free-solid-svg-icons';
 
 interface Session {
   id: string;
@@ -34,6 +39,21 @@ export default function ConclusionPage() {
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const router = useRouter();
+
+  // Audio element state for controlling speech playback.
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  // State to track whether audio is playing.
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+  // Stop the audio when the component unmounts (or when navigating away).
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.currentTime = 0;
+      }
+    };
+  }, [audioElement]);
 
   // Ensure the mic is off when this page loads.
   useEffect(() => {
@@ -64,7 +84,6 @@ export default function ConclusionPage() {
         return;
       }
       const userId = authData.session.user.id;
-
       const { error } = await supabase
         .from('sessions')
         .update({ summary: summaryText, status: 'finished', user_id: userId })
@@ -81,6 +100,62 @@ export default function ConclusionPage() {
     }
     setLoadingSummary(false);
   }
+
+  // Function to generate and play summary audio.
+  const generateAndPlayAudio = async () => {
+    if (!summary) return;
+    // Prevent duplicate audio: if audio is already playing, do nothing.
+    if (audioElement && isPlaying) return;
+    // If an audio element exists, stop and clear it.
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      setAudioElement(null);
+      setIsPlaying(false);
+    }
+    try {
+      const res = await fetch('/api/generate-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: summary,
+          voice: 'coral', // change as desired
+          instructions: 'Speak in a cheerful and positive tone.'
+        })
+      });
+      if (!res.ok) {
+        setErrorMessage("Failed to generate audio.");
+        return;
+      }
+      const audioBuffer = await res.arrayBuffer();
+      const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+
+      // Listen for 'ended' event to reset playback controls.
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false);
+      });
+      
+      // Auto-play the audio.
+      audio.play()
+        .then(() => {
+          setAudioElement(audio);
+          setIsPlaying(true);
+        })
+        .catch((err) => {
+          console.error("Autoplay blocked:", err);
+          setAudioElement(audio);
+          setIsPlaying(false);
+        });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage("An unexpected error occurred while generating speech.");
+      }
+    }
+  };
 
   // Download summary as a nicely formatted PDF.
   const handleDownloadPDF = () => {
@@ -113,10 +188,11 @@ export default function ConclusionPage() {
     
     // Participants.
     doc.setFont("helvetica", "bold");
-    doc.text("Participants:", 40, session.end_goal ? 210 : 140);
+    const participantsY = session.end_goal ? 210 : 140;
+    doc.text("Participants:", 40, participantsY);
     doc.setFont("helvetica", "normal");
     const participantsText = session.participants.join(", ");
-    doc.text(doc.splitTextToSize(participantsText, 520), 40, session.end_goal ? 230 : 160);
+    doc.text(doc.splitTextToSize(participantsText, 520), 40, participantsY + 20);
     
     // Summary.
     const summaryY = session.end_goal ? 280 : 220;
@@ -126,10 +202,10 @@ export default function ConclusionPage() {
     const summaryLines = doc.splitTextToSize(summary, 520);
     doc.text(summaryLines, 40, summaryY + 20);
 
-    // Save the PDF.
     doc.save('Session-Summary.pdf');
   };
 
+  // Fetch session details on load.
   useEffect(() => {
     async function fetchSession() {
       const { data, error } = await supabase
@@ -151,6 +227,37 @@ export default function ConclusionPage() {
     }
     fetchSession();
   }, [sessionId]);
+
+  // Automatically play summary audio once summary is ready.
+  useEffect(() => {
+    if (summary) {
+      generateAndPlayAudio();
+    }
+  }, [summary]);
+
+  // Audio control handlers.
+  const handlePlay = () => {
+    if (audioElement) {
+      // Only allow playback if the audio is paused or ended.
+      audioElement.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handlePause = () => {
+    if (audioElement) {
+      audioElement.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleStop = () => {
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      setIsPlaying(false);
+    }
+  };
 
   if (!session)
     return <p className="text-center mt-10 text-gray-600">Loading session data...</p>;
@@ -192,7 +299,7 @@ export default function ConclusionPage() {
         )}
       </div>
 
-      {/* Display Summary and Download PDF icon */}
+      {/* Display Summary, Download PDF and Audio controls */}
       {loadingSummary ? (
         <p className="mb-6 text-center text-gray-500 italic">Generating Summary...</p>
       ) : (
@@ -205,13 +312,42 @@ export default function ConclusionPage() {
               <h3 className="font-bold text-xl text-gray-700 mb-2">Summary:</h3>
               <p className="text-gray-700 leading-relaxed">{summary}</p>
             </div>
-            <button
-              onClick={handleDownloadPDF}
-              title="Download Summary as PDF"
-              className="flex items-center justify-center"
-            >
-              <FontAwesomeIcon icon={faDownload} className="text-3xl text-green-600 hover:text-green-700 transition" />
-            </button>
+            <div className="flex gap-4 justify-center mb-4">
+              <button
+                onClick={handleDownloadPDF}
+                title="Download Summary as PDF"
+                className="flex items-center justify-center"
+              >
+                <FontAwesomeIcon icon={faDownload} className="text-3xl text-green-600 hover:text-green-700 transition" />
+              </button>
+              {/* Display only Pause and Stop if audio is playing; if not, show Play */}
+              {isPlaying ? (
+                <>
+                  <button
+                    onClick={handlePause}
+                    title="Pause Audio"
+                    className="flex items-center justify-center"
+                  >
+                    <FontAwesomeIcon icon={faPause} className="text-3xl text-yellow-600 hover:text-yellow-700 transition" />
+                  </button>
+                  <button
+                    onClick={handleStop}
+                    title="Stop Audio"
+                    className="flex items-center justify-center"
+                  >
+                    <FontAwesomeIcon icon={faStop} className="text-3xl text-red-600 hover:text-red-700 transition" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handlePlay}
+                  title="Play Audio"
+                  className="flex items-center justify-center"
+                >
+                  <FontAwesomeIcon icon={faPlay} className="text-3xl text-blue-600 hover:text-blue-700 transition" />
+                </button>
+              )}
+            </div>
           </div>
         )
       )}
