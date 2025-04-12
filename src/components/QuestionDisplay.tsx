@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlay, faPause, faStop } from '@fortawesome/free-solid-svg-icons';
+import {
+  faPlay,
+  faPause,
+  faStop,
+  faSpinner,
+} from '@fortawesome/free-solid-svg-icons';
 
 interface QuestionDisplayProps {
   question: string;
@@ -12,6 +17,8 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [animationKey, setAnimationKey] = useState<number>(Date.now());
+  // New state to track if audio generation is in progress.
+  const [audioLoading, setAudioLoading] = useState<boolean>(false);
 
   // Update animation key when the question changes.
   useEffect(() => {
@@ -26,11 +33,14 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
       audioElement.currentTime = 0;
     }
 
-    // Introduce a cancellation flag to avoid race conditions.
+    // Cancellation flag to avoid race conditions.
     let cancelled = false;
 
     // Signal that audio is (about to) start.
     if (onAudioStatusChange) onAudioStatusChange(true);
+
+    // Set loading state true.
+    setAudioLoading(true);
 
     const generateAudio = async () => {
       try {
@@ -60,6 +70,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
               setAudioElement(newAudio);
               setIsPlaying(true);
               if (onAudioStatusChange) onAudioStatusChange(true);
+              setAudioLoading(false);
             }
           })
           .catch((err: unknown) => {
@@ -68,6 +79,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
               setAudioElement(newAudio);
               setIsPlaying(false);
               if (onAudioStatusChange) onAudioStatusChange(false);
+              setAudioLoading(false);
             }
           });
       } catch (err: unknown) {
@@ -75,6 +87,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
           const errorMsg = err instanceof Error ? err.message : "An error occurred while generating question audio.";
           setError(errorMsg);
           if (onAudioStatusChange) onAudioStatusChange(false);
+          setAudioLoading(false);
         }
       }
     };
@@ -94,11 +107,10 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
   // Audio control handlers.
   const handlePlay = () => {
     if (audioElement) {
-      // If audio is ended, reset time to replay.
+      // If audio ended, reset time to replay.
       if (audioElement.ended) {
         audioElement.currentTime = 0;
       }
-      // Resume playback if paused.
       audioElement.play().then(() => {
         setIsPlaying(true);
         if (onAudioStatusChange) onAudioStatusChange(true);
@@ -133,19 +145,27 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
       <div className="mt-4">
         <p className="text-gray-600 italic">Listen to the question:</p>
         <div className="flex gap-4 justify-center mt-2">
-          {isPlaying ? (
-            <>
-              <button onClick={handlePause} title="Pause Audio" className="flex items-center justify-center">
-                <FontAwesomeIcon icon={faPause} className="text-3xl text-yellow-600 hover:text-yellow-700 transition" />
-              </button>
-              <button onClick={handleStop} title="Stop Audio" className="flex items-center justify-center">
-                <FontAwesomeIcon icon={faStop} className="text-3xl text-red-600 hover:text-red-700 transition" />
-              </button>
-            </>
+          {audioLoading ? (
+            // Show animated spinner while audio is loading.
+            <div className="flex items-center justify-center">
+              <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-blue-600" />
+            </div>
           ) : (
-            <button onClick={handlePlay} title="Replay Audio" className="flex items-center justify-center">
-              <FontAwesomeIcon icon={faPlay} className="text-3xl text-blue-600 hover:text-blue-700 transition" />
-            </button>
+            // Otherwise, show controls.
+            isPlaying ? (
+              <>
+                <button onClick={handlePause} title="Pause Audio" className="flex items-center justify-center">
+                  <FontAwesomeIcon icon={faPause} className="text-3xl text-yellow-600 hover:text-yellow-700 transition" />
+                </button>
+                <button onClick={handleStop} title="Stop Audio" className="flex items-center justify-center">
+                  <FontAwesomeIcon icon={faStop} className="text-3xl text-red-600 hover:text-red-700 transition" />
+                </button>
+              </>
+            ) : (
+              <button onClick={handlePlay} title="Replay Audio" className="flex items-center justify-center">
+                <FontAwesomeIcon icon={faPlay} className="text-3xl text-blue-600 hover:text-blue-700 transition" />
+              </button>
+            )
           )}
         </div>
         {error && <div className="mt-2 text-red-600">{error}</div>}

@@ -12,6 +12,7 @@ import {
   faPlay,
   faPause,
   faStop,
+  faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
 
 interface Session {
@@ -54,6 +55,8 @@ export default function ConclusionPage() {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   // State to track whether audio is playing.
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  // New state to track if the audio generation is loading.
+  const [audioLoading, setAudioLoading] = useState<boolean>(false);
 
   // A ref to track the latest summary generation request.
   const latestGenRef = useRef<number>(0);
@@ -67,7 +70,6 @@ export default function ConclusionPage() {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
-      // Cancel any pending audio generation fetch.
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -135,13 +137,14 @@ export default function ConclusionPage() {
     if (!summary) return;
     // Prevent duplicate playback if audio is already playing.
     if (audioElement && isPlaying) return;
-    // If an audio element exists, stop and clear it.
     if (audioElement) {
       audioElement.pause();
       audioElement.currentTime = 0;
       setAudioElement(null);
       setIsPlaying(false);
     }
+
+    setAudioLoading(true); // Start the loading spinner
 
     // Create a new AbortController and store it.
     const controller = new AbortController();
@@ -154,39 +157,35 @@ export default function ConclusionPage() {
         body: JSON.stringify({
           text: summary,
           voice: 'nova',
-          instructions: 'Tone: The voice should be refined, formal, and delightfully theatrical, reminiscent of a charming radio announcer from the early 20th century. Pacing: The speech should flow smoothly at a steady cadence, neither rushed nor sluggish, allowing for clarity and a touch of grandeur. Pronunciation: Words should be enunciated crisply and elegantly, with an emphasis on vintage expressions and a slight flourish on key phrases. Emotion: The delivery should feel warm, enthusiastic, and welcoming, as if addressing a distinguished audience with utmost politeness. Inflection: Gentle rises and falls in pitch should be used to maintain engagement, adding a playful yet dignified flair to each sentence. Word Choice: The script should incorporate vintage expressions like splendid, marvelous, posthaste, and ta-ta for now, avoiding modern slang.'
+          instructions:
+            'Tone: The voice should be refined, formal, and delightfully theatrical, reminiscent of a charming radio announcer from the early 20th century. Pacing: The speech should flow smoothly at a steady cadence, neither rushed nor sluggish, allowing for clarity and a touch of grandeur. Pronunciation: Words should be enunciated crisply and elegantly, with an emphasis on vintage expressions and a slight flourish on key phrases. Emotion: The delivery should feel warm, enthusiastic, and welcoming, as if addressing a distinguished audience with utmost politeness. Inflection: Gentle rises and falls in pitch should be used to maintain engagement, adding a playful yet dignified flair to each sentence. Word Choice: The script should incorporate vintage expressions like splendid, marvelous, posthaste, and ta-ta for now, avoiding modern slang.',
         }),
         signal: controller.signal,
       });
       if (!res.ok) {
         if (isMounted.current) setErrorMessage("Failed to generate audio.");
+        setAudioLoading(false);
         return;
       }
       const audioBuffer = await res.arrayBuffer();
       const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
-
-      // Before playing, ensure that this generation is the latest.
       if (genId !== latestGenRef.current) {
-        // Outdated generation – do not play.
+        setAudioLoading(false);
         return;
       }
-
       // Listen for 'ended' event to reset playback controls.
       audio.addEventListener('ended', () => {
-        if (isMounted.current) {
-          setIsPlaying(false);
-        }
+        if (isMounted.current) setIsPlaying(false);
       });
-
       // Auto-play the audio.
       audio.play()
         .then(() => {
-          // Double-check that we are still playing the correct version.
           if (genId === latestGenRef.current && isMounted.current) {
             setAudioElement(audio);
             setIsPlaying(true);
+            setAudioLoading(false); // Audio loaded and playing; stop spinner.
           }
         })
         .catch((err) => {
@@ -194,11 +193,12 @@ export default function ConclusionPage() {
           if (genId === latestGenRef.current && isMounted.current) {
             setAudioElement(audio);
             setIsPlaying(false);
+            setAudioLoading(false);
           }
         });
     } catch (err: unknown) {
-      // If the error is due to aborting, simply return.
       if (err instanceof DOMException && err.name === 'AbortError') {
+        setAudioLoading(false);
         return;
       }
       if (isMounted.current) {
@@ -208,6 +208,7 @@ export default function ConclusionPage() {
           setErrorMessage("An unexpected error occurred while generating speech.");
         }
       }
+      setAudioLoading(false);
     }
   };
 
@@ -215,14 +216,12 @@ export default function ConclusionPage() {
   const handleDownloadPDF = async () => {
     if (!summary || !session) return;
 
-    // Create a new jsPDF document.
     const doc = new jsPDF({
       unit: 'pt',
       format: 'letter',
       compress: true,
     });
 
-    // Fetch the logo image from the public directory.
     try {
       const response = await fetch('/logo.png');
       if (!response.ok) {
@@ -230,29 +229,21 @@ export default function ConclusionPage() {
       }
       const logoBlob = await response.blob();
       const logoDataUrl = await getBase64(logoBlob);
-
-      // Add the logo image. Adjust coordinates and dimensions as needed.
-      // Here, we're positioning the logo at x:40, y:20 with width 80 and height 80.
       doc.addImage(logoDataUrl, 'PNG', 40, 20, 80, 80);
     } catch (err: unknown) {
       console.error("Error fetching logo:", err);
-      // If logo fetching fails, you can choose to continue without it.
     }
 
-    // Add document header text. Adjust the text position so it doesn't overlap with the logo.
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
-    // Place header text to the right of the logo.
     doc.text("Session Summary", 140, 60);
 
-    // Add Prompt text.
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("Prompt:", 40, 110);
     doc.setFont("helvetica", "normal");
     doc.text(doc.splitTextToSize(session.prompt, 520), 40, 130);
 
-    // End goal if available.
     if (session.end_goal) {
       doc.setFont("helvetica", "bold");
       doc.text("End Goal:", 40, 190);
@@ -260,7 +251,6 @@ export default function ConclusionPage() {
       doc.text(doc.splitTextToSize(session.end_goal, 520), 40, 210);
     }
 
-    // Participants.
     doc.setFont("helvetica", "bold");
     const participantsY = session.end_goal ? 260 : 190;
     doc.text("Participants:", 40, participantsY);
@@ -268,7 +258,6 @@ export default function ConclusionPage() {
     const participantsText = session.participants.join(", ");
     doc.text(doc.splitTextToSize(participantsText, 520), 40, participantsY + 20);
 
-    // Summary.
     const summaryY = session.end_goal ? 330 : 270;
     doc.setFont("helvetica", "bold");
     doc.text("Summary:", 40, summaryY);
@@ -276,11 +265,9 @@ export default function ConclusionPage() {
     const summaryLines = doc.splitTextToSize(summary, 520);
     doc.text(summaryLines, 40, summaryY + 20);
 
-    // Save the PDF.
     doc.save('Session-Summary.pdf');
   };
 
-  // Fetch session details on load.
   useEffect(() => {
     async function fetchSession() {
       const { data, error } = await supabase
@@ -303,19 +290,15 @@ export default function ConclusionPage() {
     fetchSession();
   }, [sessionId]);
 
-  // Automatically play summary audio once summary is ready.
   useEffect(() => {
     if (summary) {
-      // Update our generation ref.
       latestGenRef.current = Date.now();
       generateAndPlayAudio(latestGenRef.current);
     }
   }, [summary]);
 
-  // Audio control handlers.
   const handlePlay = () => {
     if (audioElement) {
-      // Only allow playback if the audio is paused or ended.
       audioElement.play();
       setIsPlaying(true);
     }
@@ -382,10 +365,7 @@ export default function ConclusionPage() {
       ) : (
         summary && (
           <div className="mb-6">
-            <div
-              className="p-6 border border-gray-300 rounded bg-gray-50 mb-4 animate-fadeIn"
-              style={{ animation: 'fadeIn 1s ease forwards' }}
-            >
+            <div className="p-6 border border-gray-300 rounded bg-gray-50 mb-4 animate-fadeIn">
               <h3 className="font-bold text-xl text-gray-700 mb-2">Summary:</h3>
               <p className="text-gray-700 leading-relaxed">{summary}</p>
             </div>
@@ -397,32 +377,28 @@ export default function ConclusionPage() {
               >
                 <FontAwesomeIcon icon={faDownload} className="text-3xl text-green-600 hover:text-green-700 transition" />
               </button>
-              {/* Display only Pause and Stop if audio is playing; if not, show Play */}
-              {isPlaying ? (
-                <>
-                  <button
-                    onClick={handlePause}
-                    title="Pause Audio"
-                    className="flex items-center justify-center"
-                  >
-                    <FontAwesomeIcon icon={faPause} className="text-3xl text-yellow-600 hover:text-yellow-700 transition" />
-                  </button>
-                  <button
-                    onClick={handleStop}
-                    title="Stop Audio"
-                    className="flex items-center justify-center"
-                  >
-                    <FontAwesomeIcon icon={faStop} className="text-3xl text-red-600 hover:text-red-700 transition" />
-                  </button>
-                </>
+              {/* Show loading spinner if audio is loading; otherwise show play/pause/stop controls */}
+              {audioLoading ? (
+                <div className="flex items-center justify-center">
+                  <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-blue-600" />
+                </div>
               ) : (
-                <button
-                  onClick={handlePlay}
-                  title="Play Audio"
-                  className="flex items-center justify-center"
-                >
-                  <FontAwesomeIcon icon={faPlay} className="text-3xl text-blue-600 hover:text-blue-700 transition" />
-                </button>
+                <>
+                  {isPlaying ? (
+                    <>
+                      <button onClick={handlePause} title="Pause Audio" className="flex items-center justify-center">
+                        <FontAwesomeIcon icon={faPause} className="text-3xl text-yellow-600 hover:text-yellow-700 transition" />
+                      </button>
+                      <button onClick={handleStop} title="Stop Audio" className="flex items-center justify-center">
+                        <FontAwesomeIcon icon={faStop} className="text-3xl text-red-600 hover:text-red-700 transition" />
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={handlePlay} title="Play Audio" className="flex items-center justify-center">
+                      <FontAwesomeIcon icon={faPlay} className="text-3xl text-blue-600 hover:text-blue-700 transition" />
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
