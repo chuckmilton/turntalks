@@ -47,6 +47,9 @@ export default function SessionPage() {
   const { sessionId } = params as { sessionId: string };
   const router = useRouter();
 
+  // Local Storage Key; ties state to this specific session
+  const STORAGE_KEY = `session-${sessionId}`;
+
   // Session & question state
   const [session, setSession] = useState<Session | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
@@ -55,9 +58,9 @@ export default function SessionPage() {
   const [timerKey, setTimerKey] = useState<number>(0);
   const [answerStarted, setAnswerStarted] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [questionCount, setQuestionCount] = useState<number>(1);
 
-  // New state for previously asked questions
+  // Use local storage to keep track of question count and other state.
+  const [questionCount, setQuestionCount] = useState<number>(1);
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
 
   // Transcript state for answer transcription
@@ -78,6 +81,31 @@ export default function SessionPage() {
       console.error("Failed to play button snap sound:", err)
     );
   };
+
+  // Restore state from localStorage on initial load (if available).
+  useEffect(() => {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        setQuestionCount(parsed.questionCount || 1);
+        setCurrentTurn(parsed.currentTurn || 0);
+        setAskedQuestions(parsed.askedQuestions || []);
+      } catch (err) {
+        console.error("Error parsing session state from localStorage:", err);
+      }
+    }
+  }, [STORAGE_KEY]);
+
+  // Save key state changes to localStorage.
+  useEffect(() => {
+    const stateToSave = {
+      questionCount,
+      currentTurn,
+      askedQuestions,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+  }, [STORAGE_KEY, questionCount, currentTurn, askedQuestions]);
 
   // Fetch session details on load.
   useEffect(() => {
@@ -104,8 +132,7 @@ export default function SessionPage() {
               "",
               fileInput
             );
-            const { data: authData, error: authError } =
-              await supabase.auth.getSession();
+            const { data: authData, error: authError } = await supabase.auth.getSession();
             if (authError || !authData.session?.user) {
               setErrorMessage("Authentication error. Please log in again.");
               return;
@@ -149,8 +176,7 @@ export default function SessionPage() {
     );
     // If all questions are done:
     if (questionsCompleted >= session.num_questions) {
-      const { data: authData, error: authError } =
-        await supabase.auth.getSession();
+      const { data: authData, error: authError } = await supabase.auth.getSession();
       if (authError || !authData.session?.user) {
         setErrorMessage("Authentication error. Please log in again.");
         return;
@@ -180,7 +206,7 @@ export default function SessionPage() {
       setAskedQuestions((prev) => [...prev, currentQuestion]);
 
       newTurn = 0;
-      setQuestionCount(prev => prev + 1);
+      setQuestionCount((prev) => prev + 1);
       setLoadingQuestion(true);
       try {
         // Build context string including new answers and previously asked questions.
