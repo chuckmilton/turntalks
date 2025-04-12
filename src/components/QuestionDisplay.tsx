@@ -11,25 +11,25 @@ import { motion } from "framer-motion";
 interface QuestionDisplayProps {
   question: string;
   onAudioStatusChange?: (isPlaying: boolean) => void;
+  questionNumber?: number;
 }
 
 const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   question,
   onAudioStatusChange,
+  questionNumber,
 }) => {
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
-    null
-  );
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [animationKey, setAnimationKey] = useState<number>(Date.now());
-  // New state to track if audio generation is in progress.
+  // State to track if audio generation is in progress.
   const [audioLoading, setAudioLoading] = useState<boolean>(false);
 
   // Update animation key when the question changes.
   useEffect(() => {
     setAnimationKey(Date.now());
-  }, [question]);
+  }, [question, questionNumber]);
 
   // Generate TTS audio whenever the question changes.
   useEffect(() => {
@@ -111,6 +111,16 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
     };
   }, [question]);
 
+  // Global cleanup when component unmounts (e.g., navigating away).
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.currentTime = 0;
+      }
+    };
+  }, [audioElement]);
+
   // Audio control handlers.
   const handlePlay = () => {
     if (audioElement) {
@@ -154,7 +164,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.6 }}
       >
-        Question:
+        {questionNumber !== undefined ? `Question ${questionNumber}:` : "Question:"}
       </motion.h3>
       <motion.p
         key={animationKey}

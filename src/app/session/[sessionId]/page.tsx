@@ -55,6 +55,7 @@ export default function SessionPage() {
   const [timerKey, setTimerKey] = useState<number>(0);
   const [answerStarted, setAnswerStarted] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [questionCount, setQuestionCount] = useState<number>(1);
 
   // New state for previously asked questions
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
@@ -179,6 +180,7 @@ export default function SessionPage() {
       setAskedQuestions((prev) => [...prev, currentQuestion]);
 
       newTurn = 0;
+      setQuestionCount(prev => prev + 1);
       setLoadingQuestion(true);
       try {
         // Build context string including new answers and previously asked questions.
@@ -234,7 +236,6 @@ export default function SessionPage() {
     setCurrentQuestion((updatedSession as Session).current_question as string);
     // Allow new question generation on the next turn.
     setHasGeneratedQuestion(false);
-    playButtonSound();
   };
 
   const handleTimeUp = () => {
@@ -242,7 +243,6 @@ export default function SessionPage() {
   };
 
   const endAnswerManually = () => {
-    playButtonSound();
     handleAnswer(finalTranscript + liveTranscript);
   };
 
@@ -277,6 +277,7 @@ export default function SessionPage() {
         <QuestionDisplay
           question={currentQuestion}
           onAudioStatusChange={setAudioPlaying}
+          questionNumber={questionCount}
         />
       </motion.div>
       <p className="mt-6 font-bold text-gray-700">
