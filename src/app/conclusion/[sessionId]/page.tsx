@@ -187,7 +187,7 @@ export default function ConclusionPage() {
         });
     } catch (err: unknown) {
       // If the error is due to aborting, simply return.
-      if ((err as any)?.name === 'AbortError') {
+      if (err instanceof DOMException && err.name === 'AbortError') {
         return;
       }
       if (isMounted.current) {
