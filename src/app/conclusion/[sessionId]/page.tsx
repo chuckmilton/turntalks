@@ -44,13 +44,23 @@ export default function ConclusionPage() {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   // State to track whether audio is playing.
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  
+
   // A ref to track the latest summary generation request.
   const latestGenRef = useRef<number>(0);
+  // A ref to track if the component is still mounted.
+  const isMounted = useRef<boolean>(true);
+  // A ref to store the AbortController for the audio generation fetch.
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Stop the audio when the component unmounts (or when navigating away).
+  // Stop the audio, abort pending audio generation, and update the mounted flag when the component unmounts.
   useEffect(() => {
+    isMounted.current = true;
     return () => {
+      isMounted.current = false;
+      // Cancel any pending audio generation fetch.
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       if (audioElement) {
         audioElement.pause();
         audioElement.currentTime = 0;
@@ -79,11 +89,13 @@ export default function ConclusionPage() {
       const result = await res.json();
       if (result.error) throw new Error(result.error);
       const summaryText: string = result.summary;
-      setSummary(summaryText);
+      if (isMounted.current) {
+        setSummary(summaryText);
+      }
 
       const { data: authData, error: authError } = await supabase.auth.getSession();
       if (authError || !authData.session?.user) {
-        setErrorMessage("Authentication error. Please log in again.");
+        if (isMounted.current) setErrorMessage("Authentication error. Please log in again.");
         return;
       }
       const userId = authData.session.user.id;
@@ -91,17 +103,19 @@ export default function ConclusionPage() {
         .from('sessions')
         .update({ summary: summaryText, status: 'finished', user_id: userId })
         .eq('id', sessionId);
-      if (error) {
+      if (error && isMounted.current) {
         setErrorMessage(error.message);
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMessage(err.message);
-      } else {
-        setErrorMessage('An unexpected error occurred.');
+      if (isMounted.current) {
+        if (err instanceof Error) {
+          setErrorMessage(err.message);
+        } else {
+          setErrorMessage('An unexpected error occurred.');
+        }
       }
     }
-    setLoadingSummary(false);
+    if (isMounted.current) setLoadingSummary(false);
   }
 
   // Function to generate and play summary audio.
@@ -117,6 +131,11 @@ export default function ConclusionPage() {
       setAudioElement(null);
       setIsPlaying(false);
     }
+
+    // Create a new AbortController and store it.
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const res = await fetch('/api/generate-speech', {
         method: 'POST',
@@ -125,10 +144,11 @@ export default function ConclusionPage() {
           text: summary,
           voice: 'coral', // change as desired
           instructions: 'Speak in a cheerful and positive tone.'
-        })
+        }),
+        signal: controller.signal,
       });
       if (!res.ok) {
-        setErrorMessage("Failed to generate audio.");
+        if (isMounted.current) setErrorMessage("Failed to generate audio.");
         return;
       }
       const audioBuffer = await res.arrayBuffer();
@@ -144,30 +164,38 @@ export default function ConclusionPage() {
 
       // Listen for 'ended' event to reset playback controls.
       audio.addEventListener('ended', () => {
-        setIsPlaying(false);
+        if (isMounted.current) {
+          setIsPlaying(false);
+        }
       });
-      
+
       // Auto-play the audio.
       audio.play()
         .then(() => {
           // Double-check that we are still playing the correct version.
-          if (genId === latestGenRef.current) {
+          if (genId === latestGenRef.current && isMounted.current) {
             setAudioElement(audio);
             setIsPlaying(true);
           }
         })
         .catch((err) => {
           console.error("Autoplay blocked:", err);
-          if (genId === latestGenRef.current) {
+          if (genId === latestGenRef.current && isMounted.current) {
             setAudioElement(audio);
             setIsPlaying(false);
           }
         });
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMessage(err.message);
-      } else {
-        setErrorMessage("An unexpected error occurred while generating speech.");
+      // If the error is due to aborting, simply return.
+      if ((err as any)?.name === 'AbortError') {
+        return;
+      }
+      if (isMounted.current) {
+        if (err instanceof Error) {
+          setErrorMessage(err.message);
+        } else {
+          setErrorMessage("An unexpected error occurred while generating speech.");
+        }
       }
     }
   };
@@ -181,18 +209,18 @@ export default function ConclusionPage() {
       format: 'letter',
       compress: true,
     });
-    
+
     // Document header.
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.text("Session Summary", 40, 40);
-    
+
     // Prompt.
     doc.setFontSize(14);
     doc.text("Prompt:", 40, 70);
     doc.setFont("helvetica", "normal");
     doc.text(doc.splitTextToSize(session.prompt, 520), 40, 90);
-    
+
     // End goal if available.
     if (session.end_goal) {
       doc.setFont("helvetica", "bold");
@@ -200,7 +228,7 @@ export default function ConclusionPage() {
       doc.setFont("helvetica", "normal");
       doc.text(doc.splitTextToSize(session.end_goal, 520), 40, 160);
     }
-    
+
     // Participants.
     doc.setFont("helvetica", "bold");
     const participantsY = session.end_goal ? 210 : 140;
@@ -208,7 +236,7 @@ export default function ConclusionPage() {
     doc.setFont("helvetica", "normal");
     const participantsText = session.participants.join(", ");
     doc.text(doc.splitTextToSize(participantsText, 520), 40, participantsY + 20);
-    
+
     // Summary.
     const summaryY = session.end_goal ? 280 : 220;
     doc.setFont("helvetica", "bold");
@@ -287,13 +315,13 @@ export default function ConclusionPage() {
         </div>
       )}
       <h2 className="text-3xl font-bold mb-6 text-gray-800">Session Summary</h2>
-      
+
       {/* Display Prompt */}
       <div className="mb-6">
         <h3 className="font-bold text-xl text-gray-700 mb-2">Prompt:</h3>
         <p className="text-gray-700">{session.prompt}</p>
       </div>
-      
+
       {/* Display End Goal if available */}
       {session.end_goal && (
         <div className="mb-6">
