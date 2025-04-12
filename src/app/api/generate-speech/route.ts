@@ -21,11 +21,6 @@ export async function POST(req: Request) {
       })
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenAI API error: ${errorText}`);
-    }
-
     const arrayBuffer = await response.arrayBuffer();
     return new NextResponse(arrayBuffer, {
       headers: { 'Content-Type': 'audio/mpeg' }

@@ -7,7 +7,6 @@ import SpeechToText from '@/components/SpeechToText';
 import Timer from '@/components/Timer';
 import useRequireAuth from '@/hooks/useRequireAuth';
 
-// Updated helper to pass file context.
 async function fetchGeneratedQuestion(
   prompt: string,
   context: string,
@@ -45,7 +44,7 @@ export default function SessionPage() {
   const { sessionId } = params as { sessionId: string };
   const router = useRouter();
 
-  // Session and question state.
+  // Session & question state
   const [session, setSession] = useState<Session | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>('');
   const [currentTurn, setCurrentTurn] = useState<number>(0);
@@ -54,30 +53,16 @@ export default function SessionPage() {
   const [answerStarted, setAnswerStarted] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // Transcript states for answer transcription.
+  // Transcript state for answer transcription
   const [finalTranscript, setFinalTranscript] = useState<string>('');
   const [liveTranscript, setLiveTranscript] = useState<string>('');
-
-  // Editing mode state.
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedText, setEditedText] = useState<string>('');
 
-  // State flag to ensure a question isn't regenerated repeatedly.
+  // Prevent redundant generation of question.
   const [hasGeneratedQuestion, setHasGeneratedQuestion] = useState<boolean>(false);
-
-  // ---- Audio for the QUESTION TTS ----
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-
-  // Cleanup audio on unmount (or when navigating away).
-  useEffect(() => {
-    return () => {
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.currentTime = 0;
-      }
-    };
-  }, [audioElement]);
+  // Track if the question audio is currently playing.
+  const [audioPlaying, setAudioPlaying] = useState<boolean>(false);
 
   // Fetch session details on load.
   useEffect(() => {
@@ -92,6 +77,7 @@ export default function SessionPage() {
       } else {
         const sessionData = data as Session;
         setSession(sessionData);
+        // Only generate question if there isn't one already and if it hasn't been generated for this turn.
         if (!sessionData.current_question && !hasGeneratedQuestion) {
           try {
             const fileInput = sessionData.openai_file_id
@@ -129,82 +115,7 @@ export default function SessionPage() {
     fetchSession();
   }, [sessionId, hasGeneratedQuestion]);
 
-  // Automatically generate and play TTS for the question when it loads.
-  useEffect(() => {
-    if (currentQuestion) {
-      // First, stop any previously playing audio.
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.currentTime = 0;
-      }
-      // Generate new audio for the question.
-      (async () => {
-        try {
-          const res = await fetch('/api/generate-speech', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: currentQuestion,
-              voice: 'coral', // Adjust as desired.
-              instructions: 'Speak clearly in a neutral tone.'
-            }),
-          });
-          if (!res.ok) {
-            setErrorMessage("Failed to generate question audio.");
-            return;
-          }
-          const audioBuffer = await res.arrayBuffer();
-          const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-          const audioUrl = URL.createObjectURL(blob);
-          const audio = new Audio(audioUrl);
-          // When audio ends, update state so that the play button reappears.
-          audio.addEventListener('ended', () => {
-            setIsPlaying(false);
-          });
-          // Auto-play the audio.
-          audio.play().then(() => {
-            setAudioElement(audio);
-            setIsPlaying(true);
-          }).catch((err) => {
-            console.error("Autoplay blocked for question audio:", err);
-            setAudioElement(audio);
-            setIsPlaying(false);
-          });
-        } catch (err: unknown) {
-          if (err instanceof Error) {
-            setErrorMessage(err.message);
-          } else {
-            setErrorMessage("An unexpected error occurred while generating question audio.");
-          }
-        }
-      })();
-    }
-  }, [currentQuestion]);
-
-  // Audio control handlers for question TTS.
-  const handlePlay = () => {
-    if (audioElement) {
-      audioElement.play();
-      setIsPlaying(true);
-    }
-  };
-
-  const handlePause = () => {
-    if (audioElement) {
-      audioElement.pause();
-      setIsPlaying(false);
-    }
-  };
-
-  const handleStop = () => {
-    if (audioElement) {
-      audioElement.pause();
-      audioElement.currentTime = 0;
-      setIsPlaying(false);
-    }
-  };
-
-  // Handle answer submission.
+  // Answer submission and question turn handling.
   const handleAnswer = async (answerText: string) => {
     if (!session) return;
     setErrorMessage('');
@@ -273,12 +184,14 @@ export default function SessionPage() {
     }
     setSession(updatedSession as Session);
     setCurrentTurn(newTurn);
-    // Reset transcription states for next turn.
+    // Reset transcription states for the next turn.
     setFinalTranscript('');
     setLiveTranscript('');
-    setTimerKey(prev => prev + 1);
+    setTimerKey((prev) => prev + 1);
     setAnswerStarted(false);
     setCurrentQuestion((updatedSession as Session).current_question as string);
+    // Allow new question generation on the next turn.
+    setHasGeneratedQuestion(false);
   };
 
   const handleTimeUp = () => {
@@ -304,14 +217,24 @@ export default function SessionPage() {
         </div>
       )}
       <h2 className="text-3xl font-bold mb-6 text-gray-800">Session Details</h2>
-      <QuestionDisplay question={currentQuestion} />
+      {/* Render the QuestionDisplay with both the question text and audio controls */}
+      <QuestionDisplay 
+        question={currentQuestion} 
+        onAudioStatusChange={setAudioPlaying} 
+      />
       <p className="mt-6 font-bold text-gray-700">
         Current Participant: {session.participants[currentTurn]}
       </p>
+      {/* Answer Controls */}
       {!answerStarted ? (
         <button
           onClick={() => setAnswerStarted(true)}
-          className="mt-6 px-6 py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          disabled={audioPlaying}
+          className={`mt-6 px-6 py-3 font-semibold rounded-md shadow transition-transform hover:-translate-y-0.5 ${
+            audioPlaying 
+              ? 'bg-gray-400 text-white cursor-not-allowed'
+              : 'bg-pink-600 text-white hover:shadow-lg'
+          }`}
         >
           Start Answer
         </button>
@@ -343,7 +266,7 @@ export default function SessionPage() {
             <>
               <div className="mt-6">
                 <SpeechToText
-                  key={timerKey} // key forces remount when timerKey changes, resetting transcription.
+                  key={timerKey} // Forces remount on new turn.
                   onResult={(text: string) => {
                     if (!isEditing) {
                       if (text.startsWith(finalTranscript)) {

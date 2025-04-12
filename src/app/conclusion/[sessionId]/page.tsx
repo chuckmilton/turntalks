@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Rating from '@/components/Rating';
 import { useRouter, useParams } from 'next/navigation';
@@ -44,6 +44,9 @@ export default function ConclusionPage() {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   // State to track whether audio is playing.
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  
+  // A ref to track the latest summary generation request.
+  const latestGenRef = useRef<number>(0);
 
   // Stop the audio when the component unmounts (or when navigating away).
   useEffect(() => {
@@ -102,9 +105,10 @@ export default function ConclusionPage() {
   }
 
   // Function to generate and play summary audio.
-  const generateAndPlayAudio = async () => {
+  // It uses the current generation id to skip outdated audio.
+  const generateAndPlayAudio = async (genId: number) => {
     if (!summary) return;
-    // Prevent duplicate audio: if audio is already playing, do nothing.
+    // Prevent duplicate playback if audio is already playing.
     if (audioElement && isPlaying) return;
     // If an audio element exists, stop and clear it.
     if (audioElement) {
@@ -132,6 +136,12 @@ export default function ConclusionPage() {
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
 
+      // Before playing, ensure that this generation is the latest.
+      if (genId !== latestGenRef.current) {
+        // Outdated generation – do not play.
+        return;
+      }
+
       // Listen for 'ended' event to reset playback controls.
       audio.addEventListener('ended', () => {
         setIsPlaying(false);
@@ -140,13 +150,18 @@ export default function ConclusionPage() {
       // Auto-play the audio.
       audio.play()
         .then(() => {
-          setAudioElement(audio);
-          setIsPlaying(true);
+          // Double-check that we are still playing the correct version.
+          if (genId === latestGenRef.current) {
+            setAudioElement(audio);
+            setIsPlaying(true);
+          }
         })
         .catch((err) => {
           console.error("Autoplay blocked:", err);
-          setAudioElement(audio);
-          setIsPlaying(false);
+          if (genId === latestGenRef.current) {
+            setAudioElement(audio);
+            setIsPlaying(false);
+          }
         });
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -231,7 +246,9 @@ export default function ConclusionPage() {
   // Automatically play summary audio once summary is ready.
   useEffect(() => {
     if (summary) {
-      generateAndPlayAudio();
+      // Update our generation ref.
+      latestGenRef.current = Date.now();
+      generateAndPlayAudio(latestGenRef.current);
     }
   }, [summary]);
 
