@@ -10,12 +10,13 @@ import useRequireAuth from '@/hooks/useRequireAuth';
 async function fetchGeneratedQuestion(
   prompt: string,
   context: string,
-  fileInput?: { file_id?: string }
+  fileInput?: { file_id?: string },
+  previousQuestions: string[] = [] // Pass previously asked questions here.
 ): Promise<string> {
   const res = await fetch('/api/generate-question', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, context, fileInput }),
+    body: JSON.stringify({ prompt, context, fileInput, previousQuestions }),
   });
   const data = await res.json();
   if (data.error) {
@@ -53,6 +54,9 @@ export default function SessionPage() {
   const [answerStarted, setAnswerStarted] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  // New state for previously asked questions
+  const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
+
   // Transcript state for answer transcription
   const [finalTranscript, setFinalTranscript] = useState<string>('');
   const [liveTranscript, setLiveTranscript] = useState<string>('');
@@ -89,6 +93,7 @@ export default function SessionPage() {
             const fileInput = sessionData.openai_file_id
               ? { file_id: sessionData.openai_file_id }
               : undefined;
+            // For the first question, no previous questions exist.
             const question = await fetchGeneratedQuestion(sessionData.prompt, '', fileInput);
             const { data: authData, error: authError } = await supabase.auth.getSession();
             if (authError || !authData.session?.user) {
@@ -130,6 +135,7 @@ export default function SessionPage() {
       { participant: session.participants[currentTurn], answer: answerText },
     ];
     const questionsCompleted = Math.floor(newAnswers.length / session.participants.length);
+    // If all questions are done:
     if (questionsCompleted >= session.num_questions) {
       const { data: authData, error: authError } = await supabase.auth.getSession();
       if (authError || !authData.session?.user) {
@@ -148,19 +154,29 @@ export default function SessionPage() {
       } else {
         setSession(finishedSession as Session);
       }
-      // No duplicate sound call here—sound is already played in the button's onClick.
+      playButtonSound();
       router.push(`/conclusion/${sessionId}`);
       return;
     }
 
     let newQuestion = currentQuestion;
     let newTurn = currentTurn;
+    // When the current turn is the last participant, time to generate a new question.
     if (currentTurn >= session.participants.length - 1) {
+      // Add the current question to the list of already asked questions.
+      setAskedQuestions(prev => [...prev, currentQuestion]);
+
       newTurn = 0;
       setLoadingQuestion(true);
       try {
+        // Build context string including new answers and previously asked questions.
+        const contextString =
+          JSON.stringify(newAnswers) +
+          (askedQuestions.length > 0
+            ? "\nPreviously asked questions:\n" + askedQuestions.join("\n")
+            : "");
         const fileInput = session.openai_file_id ? { file_id: session.openai_file_id } : undefined;
-        newQuestion = await fetchGeneratedQuestion(session.prompt, JSON.stringify(newAnswers), fileInput);
+        newQuestion = await fetchGeneratedQuestion(session.prompt, contextString, fileInput, askedQuestions);
       } catch (err: unknown) {
         if (err instanceof Error) {
           setErrorMessage(err.message);
@@ -194,12 +210,12 @@ export default function SessionPage() {
     // Reset transcription states for the next turn.
     setFinalTranscript('');
     setLiveTranscript('');
-    setTimerKey((prev) => prev + 1);
+    setTimerKey(prev => prev + 1);
     setAnswerStarted(false);
     setCurrentQuestion((updatedSession as Session).current_question as string);
     // Allow new question generation on the next turn.
     setHasGeneratedQuestion(false);
-    // No duplicate sound call here.
+    playButtonSound();
   };
 
   const handleTimeUp = () => {
@@ -207,10 +223,12 @@ export default function SessionPage() {
   };
 
   const endAnswerManually = () => {
+    playButtonSound();
     handleAnswer(finalTranscript + liveTranscript);
   };
 
   const finishSession = () => {
+    playButtonSound();
     router.push(`/conclusion/${sessionId}`);
   };
 

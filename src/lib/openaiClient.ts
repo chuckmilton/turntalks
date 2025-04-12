@@ -6,14 +6,13 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Updated interface: support file_id, filename, and file_data.
 interface FileInput {
-  file_id?: string;   // Use if you've already uploaded the file via OpenAI's Files API.
-  filename?: string;  // Use when providing Base64-encoded file data.
-  file_data?: string; // Base64-encoded data with MIME prefix, e.g. "data:application/pdf;base64,..."
+  file_id?: string;
+  filename?: string;
+  file_data?: string;
 }
 
 /**
  * Define the expected structure for text message parts.
- * This matches what the API expects for a text message when sending an array.
  */
 interface ChatCompletionContentPartText {
   type: "text";
@@ -22,7 +21,6 @@ interface ChatCompletionContentPartText {
 
 /**
  * Define the expected structure for file message parts.
- * (Adjust this interface if your model supports richer file inputs.)
  */
 interface ChatCompletionContentPartFile {
   type: "file";
@@ -35,7 +33,6 @@ interface ChatCompletionContentPartFile {
 
 /**
  * Our union type for a message part.
- * The API accepts either text parts or file parts.
  */
 type ChatCompletionContentPart = ChatCompletionContentPartText | ChatCompletionContentPartFile;
 
@@ -52,13 +49,25 @@ interface SessionData {
  * Generates a question based on a prompt and previous answers.
  * Optionally includes file context. If a file is provided, the message content is an array
  * containing a file part and then a text part; otherwise it's a plain string.
+ * 
+ * Now accepts an additional parameter `previousQuestions` to steer the model away from repeating similar questions.
  */
 export async function generateQuestion(
   prompt: string,
   context: string,
-  fileInput?: FileInput
+  fileInput?: FileInput,
+  previousQuestions: string[] = [] // New parameter for already asked questions
 ): Promise<string> {
   try {
+    // If there are previous questions, build a string that lists them.
+    const previousContext =
+      previousQuestions.length > 0
+        ? "\nPreviously asked questions:\n" + previousQuestions.join("\n")
+        : "";
+    // Additional instruction for uniqueness.
+    const differentiationInstruction =
+      " Please ensure that the new question is unique and does not resemble any previously asked questions.";
+
     let messageContent: string | ChatCompletionContentPart[];
     if (fileInput) {
       if (fileInput.file_id) {
@@ -69,7 +78,7 @@ export async function generateQuestion(
           },
           {
             type: "text",
-            text: `Based on this prompt: "${prompt}" and previous answers: "${context}", generate a thought-provoking question.`,
+            text: `Based on this prompt: "${prompt}" and previous answers: "${context}${previousContext}", generate a thought-provoking question.${differentiationInstruction}`,
           },
         ];
       } else if (fileInput.file_data && fileInput.filename) {
@@ -80,18 +89,18 @@ export async function generateQuestion(
           },
           {
             type: "text",
-            text: `Based on this prompt: "${prompt}" and previous answers: "${context}", generate a thought-provoking question.`,
+            text: `Based on this prompt: "${prompt}" and previous answers: "${context}${previousContext}", generate a thought-provoking question.${differentiationInstruction}`,
           },
         ];
       } else {
-        messageContent = `Based on this prompt: "${prompt}" and previous answers: "${context}", generate a thought-provoking question.`;
+        messageContent = `Based on this prompt: "${prompt}" and previous answers: "${context}${previousContext}", generate a thought-provoking question.${differentiationInstruction}`;
       }
     } else {
-      messageContent = `Based on this prompt: "${prompt}" and previous answers: "${context}", generate a thought-provoking question.`;
+      messageContent = `Based on this prompt: "${prompt}" and previous answers: "${context}${previousContext}", generate a thought-provoking question.${differentiationInstruction}`;
     }
 
     const completion = await client.chat.completions.create({
-      model: "gpt-4o", // or choose "gpt-3.5-turbo" as needed
+      model: "gpt-4o", // or use another model as needed
       messages: [
         {
           role: "user",
@@ -108,8 +117,7 @@ export async function generateQuestion(
 
 /**
  * Generates a summary based on session data.
- * Optionally includes a file input. When a file is provided, the message content
- * is an array containing a file part and then a text part; otherwise it's a plain string.
+ * Optionally includes a file input.
  */
 export async function generateSummary(
   sessionData: SessionData,
