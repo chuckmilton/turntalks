@@ -62,7 +62,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
               if (onAudioStatusChange) onAudioStatusChange(true);
             }
           })
-          .catch((err) => {
+          .catch((err: unknown) => {
             console.error("Autoplay blocked for question audio:", err);
             if (!cancelled) {
               setAudioElement(newAudio);
@@ -70,9 +70,10 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
               if (onAudioStatusChange) onAudioStatusChange(false);
             }
           });
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelled) {
-          setError(err.message || "An error occurred while generating question audio.");
+          const errorMsg = err instanceof Error ? err.message : "An error occurred while generating question audio.";
+          setError(errorMsg);
           if (onAudioStatusChange) onAudioStatusChange(false);
         }
       }

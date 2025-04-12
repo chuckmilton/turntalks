@@ -20,7 +20,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
   // accumulatedTranscript holds all recognized text for this turn.
   const [accumulatedTranscript, setAccumulatedTranscript] = useState<string>(initialTranscript.trim());
   const [isMuted, setIsMuted] = useState<boolean>(false);
-  const { transcript, resetTranscript } = useSpeechRecognition();
+  const { transcript } = useSpeechRecognition();
 
   // Use a ref to store the last processed transcript.
   const prevTranscriptRef = useRef<string>(initialTranscript.trim());
