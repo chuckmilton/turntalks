@@ -54,3 +54,6 @@ body {
   animation: fadeIn 1s ease forwards;
 }
 
+button {
+  cursor: pointer !important;
+}

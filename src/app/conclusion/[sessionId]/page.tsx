@@ -29,6 +29,16 @@ interface Session {
   [key: string]: unknown;
 }
 
+// Utility function to convert a Blob to a base64 data URL.
+function getBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+}
+
 export default function ConclusionPage() {
   useRequireAuth();
 
@@ -95,7 +105,8 @@ export default function ConclusionPage() {
 
       const { data: authData, error: authError } = await supabase.auth.getSession();
       if (authError || !authData.session?.user) {
-        if (isMounted.current) setErrorMessage("Authentication error. Please log in again.");
+        if (isMounted.current)
+          setErrorMessage("Authentication error. Please log in again.");
         return;
       }
       const userId = authData.session.user.id;
@@ -200,51 +211,72 @@ export default function ConclusionPage() {
     }
   };
 
-  // Download summary as a nicely formatted PDF.
-  const handleDownloadPDF = () => {
+  // Download summary as a nicely formatted PDF with the logo.
+  const handleDownloadPDF = async () => {
     if (!summary || !session) return;
 
+    // Create a new jsPDF document.
     const doc = new jsPDF({
       unit: 'pt',
       format: 'letter',
       compress: true,
     });
 
-    // Document header.
+    // Fetch the logo image from the public directory.
+    try {
+      const response = await fetch('/logo.png');
+      if (!response.ok) {
+        throw new Error("Failed to fetch logo image.");
+      }
+      const logoBlob = await response.blob();
+      const logoDataUrl = await getBase64(logoBlob);
+
+      // Add the logo image. Adjust coordinates and dimensions as needed.
+      // Here, we're positioning the logo at x:40, y:20 with width 80 and height 80.
+      doc.addImage(logoDataUrl, 'PNG', 40, 20, 80, 80);
+    } catch (err: unknown) {
+      console.error("Error fetching logo:", err);
+      // If logo fetching fails, you can choose to continue without it.
+    }
+
+    // Add document header text. Adjust the text position so it doesn't overlap with the logo.
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
-    doc.text("Session Summary", 40, 40);
+    // Place header text to the right of the logo.
+    doc.text("Session Summary", 140, 60);
 
-    // Prompt.
+    // Add Prompt text.
     doc.setFontSize(14);
-    doc.text("Prompt:", 40, 70);
+    doc.setFont("helvetica", "bold");
+    doc.text("Prompt:", 40, 110);
     doc.setFont("helvetica", "normal");
-    doc.text(doc.splitTextToSize(session.prompt, 520), 40, 90);
+    doc.text(doc.splitTextToSize(session.prompt, 520), 40, 130);
 
     // End goal if available.
     if (session.end_goal) {
       doc.setFont("helvetica", "bold");
-      doc.text("End Goal:", 40, 140);
+      doc.text("End Goal:", 40, 190);
       doc.setFont("helvetica", "normal");
-      doc.text(doc.splitTextToSize(session.end_goal, 520), 40, 160);
+      doc.text(doc.splitTextToSize(session.end_goal, 520), 40, 210);
     }
 
     // Participants.
     doc.setFont("helvetica", "bold");
-    const participantsY = session.end_goal ? 210 : 140;
+    const participantsY = session.end_goal ? 260 : 190;
     doc.text("Participants:", 40, participantsY);
     doc.setFont("helvetica", "normal");
     const participantsText = session.participants.join(", ");
     doc.text(doc.splitTextToSize(participantsText, 520), 40, participantsY + 20);
 
     // Summary.
-    const summaryY = session.end_goal ? 280 : 220;
+    const summaryY = session.end_goal ? 330 : 270;
     doc.setFont("helvetica", "bold");
     doc.text("Summary:", 40, summaryY);
     doc.setFont("helvetica", "normal");
     const summaryLines = doc.splitTextToSize(summary, 520);
     doc.text(summaryLines, 40, summaryY + 20);
 
+    // Save the PDF.
     doc.save('Session-Summary.pdf');
   };
 
