@@ -136,7 +136,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ question, onAudioStat
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-700 to-gray-900 rounded-lg shadow-lg mb-6 transform transition duration-500 hover:scale-105">
+    <div className="p-6 bg-gradient-to-br from-gray-700 to-gray-900 rounded-lg shadow-lg mb-6">
       <h3 className="text-2xl font-bold text-white mb-2">Question:</h3>
       <p key={animationKey} className="text-white text-lg" style={{ animation: 'fadeIn 1s ease forwards' }}>
         {question}

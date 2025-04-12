@@ -64,6 +64,12 @@ export default function SessionPage() {
   // Track if the question audio is currently playing.
   const [audioPlaying, setAudioPlaying] = useState<boolean>(false);
 
+  // Helper to play the button sound (from public/button-snap.mp3)
+  const playButtonSound = () => {
+    const sound = new Audio('/button-snap.mp3');
+    sound.play().catch(err => console.error('Failed to play button snap sound:', err));
+  };
+
   // Fetch session details on load.
   useEffect(() => {
     async function fetchSession() {
@@ -142,6 +148,7 @@ export default function SessionPage() {
       } else {
         setSession(finishedSession as Session);
       }
+      // No duplicate sound call here—sound is already played in the button's onClick.
       router.push(`/conclusion/${sessionId}`);
       return;
     }
@@ -192,6 +199,7 @@ export default function SessionPage() {
     setCurrentQuestion((updatedSession as Session).current_question as string);
     // Allow new question generation on the next turn.
     setHasGeneratedQuestion(false);
+    // No duplicate sound call here.
   };
 
   const handleTimeUp = () => {
@@ -228,7 +236,7 @@ export default function SessionPage() {
       {/* Answer Controls */}
       {!answerStarted ? (
         <button
-          onClick={() => setAnswerStarted(true)}
+          onClick={() => { playButtonSound(); setAnswerStarted(true); }}
           disabled={audioPlaying}
           className={`mt-6 px-6 py-3 font-semibold rounded-md shadow transition-transform hover:-translate-y-0.5 ${
             audioPlaying 
@@ -252,11 +260,7 @@ export default function SessionPage() {
                 onChange={(e) => setEditedText(e.target.value)}
               />
               <button
-                onClick={() => {
-                  setFinalTranscript(editedText);
-                  setLiveTranscript('');
-                  setIsEditing(false);
-                }}
+                onClick={() => { playButtonSound(); setFinalTranscript(editedText); setLiveTranscript(''); setIsEditing(false); }}
                 className="mt-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
               >
                 Finish Editing
@@ -281,16 +285,13 @@ export default function SessionPage() {
                 />
               </div>
               <button
-                onClick={() => {
-                  setEditedText(finalTranscript + liveTranscript);
-                  setIsEditing(true);
-                }}
+                onClick={() => { playButtonSound(); setEditedText(finalTranscript + liveTranscript); setIsEditing(true); }}
                 className="mt-6 px-6 py-3 bg-yellow-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
               >
                 Edit Answer
               </button>
               <button
-                onClick={endAnswerManually}
+                onClick={() => { playButtonSound(); endAnswerManually(); }}
                 className="mt-6 px-6 py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
               >
                 End Answer
@@ -303,7 +304,7 @@ export default function SessionPage() {
         <p className="mt-4 text-center text-gray-500 italic">Generating next question...</p>
       )}
       <button
-        onClick={finishSession}
+        onClick={() => { playButtonSound(); finishSession(); }}
         className="mt-6 w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
       >
         Finish Session

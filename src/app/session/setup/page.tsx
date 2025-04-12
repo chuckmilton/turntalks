@@ -44,6 +44,14 @@ function SessionSetupContent() {
     e.preventDefault();
     setErrorMessage('');
 
+    // Play the select sound on button click.
+    const selectSound = new Audio('/select-sound.mp3');
+    try {
+      await selectSound.play();
+    } catch (err) {
+      console.error("Error playing select sound:", err);
+    }
+
     // Retrieve the current user id.
     const { data, error: authError } = await supabase.auth.getSession();
     if (authError || !data.session?.user) {
