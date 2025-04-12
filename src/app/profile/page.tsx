@@ -1,8 +1,8 @@
-'use client';
-import { useState, useEffect, FormEvent } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import useRequireAuth from '@/hooks/useRequireAuth';
-import { useRouter } from 'next/navigation';
+"use client";
+import { useState, useEffect, FormEvent } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import useRequireAuth from "@/hooks/useRequireAuth";
+import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
   useRequireAuth();
@@ -101,7 +101,7 @@ export default function ProfilePage() {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <div className="w-full max-w-2xl mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
+    <div className="relative w-full max-w-2xl mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
       <h2 className="text-3xl font-bold mb-6 text-center">Profile Settings</h2>
       
       {/* Profile Update Section */}
@@ -181,14 +181,22 @@ export default function ProfilePage() {
           {deleteMessage}
         </div>
       )}
-      <div>
+      <div className="text-center mb-16">
         <button
           onClick={handleDeleteAccount}
-          className="w-full py-3 bg-red-700 hover:bg-red-800 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+          className="text-red-600 font-bold hover:underline focus:outline-none"
         >
           Delete Account
         </button>
       </div>
+
+      {/* Back Button in Bottom Left Corner */}
+      <button
+        onClick={() => router.push("/dashboard")}
+        className="absolute bottom-6 left-6 text-blue-600 font-bold hover:underline focus:outline-none"
+      >
+        &larr; Back to Dashboard
+      </button>
     </div>
   );
 }

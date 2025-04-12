@@ -1,8 +1,8 @@
-'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
-import useRequireAuth from '@/hooks/useRequireAuth';
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import useRequireAuth from "@/hooks/useRequireAuth";
 
 export default function CreateSessionPage() {
   useRequireAuth();
@@ -64,7 +64,7 @@ export default function CreateSessionPage() {
           prompt,
           end_goal: endGoal,
           num_questions: validNumQuestions,
-          openai_file_id: openaiFileId, // file ID from OpenAI, if a file was uploaded.
+          openai_file_id: openaiFileId,
           participants: [],
           time_limit: 0,
           answers: [],
@@ -123,12 +123,34 @@ export default function CreateSessionPage() {
         </div>
         <div className="mb-6">
           <label className="block font-semibold mb-2">Upload Reference PDF (optional):</label>
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
-            className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
-          />
+          {pdfFile ? (
+            <div className="flex items-center justify-between p-3 border border-gray-300 rounded-md bg-gray-50">
+              <span className="text-gray-700 truncate">{pdfFile.name}</span>
+              <button
+                type="button"
+                title="Remove file"
+                onClick={() => setPdfFile(null)}
+                className="flex-shrink-0 p-1 ml-4 rounded-full hover:bg-red-100 transition-colors"
+              >
+                <svg
+                  className="w-5 h-5 text-gray-600 hover:text-red-600 transition-colors"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
+              className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-500 file:rounded-md file:transition-colors"
+            />
+          )}
         </div>
         <button
           type="submit"

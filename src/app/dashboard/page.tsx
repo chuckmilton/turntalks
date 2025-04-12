@@ -94,8 +94,7 @@ export default function DashboardPage() {
       alert("No sessions selected for deletion.");
       return;
     }
-    if (!confirm("Are you sure you want to delete the selected sessions?"))
-      return;
+    if (!confirm("Are you sure you want to delete the selected sessions?")) return;
 
     const { error } = await supabase
       .from("sessions")
@@ -137,7 +136,7 @@ export default function DashboardPage() {
       initial="hidden"
       animate="visible"
       variants={containerVariant}
-      className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen p-8"
+      className="rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen p-8"
     >
       {/* Header Section with energetic background */}
       <motion.div
@@ -157,7 +156,6 @@ export default function DashboardPage() {
             href="/profile"
             className="flex items-center px-4 py-2 bg-blue-700 rounded-md shadow hover:shadow-xl transition transform hover:-translate-y-1"
           >
-            {/* User Icon */}
             <svg
               className="w-5 h-5 mr-2"
               fill="none"
@@ -165,8 +163,18 @@ export default function DashboardPage() {
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A9 9 0 1118.364 6.636 9 9 0 015.121 17.804z"></path>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M5.121 17.804A9 9 0 1118.364 6.636 9 9 0 015.121 17.804z"
+              ></path>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+              ></path>
             </svg>
             Profile
           </Link>
@@ -174,7 +182,6 @@ export default function DashboardPage() {
             onClick={handleLogout}
             className="flex items-center px-4 py-2 bg-pink-700 rounded-md shadow hover:shadow-xl transition transform hover:-translate-y-1"
           >
-            {/* Logout Icon */}
             <svg
               className="w-5 h-5 mr-2"
               fill="none"
@@ -182,8 +189,18 @@ export default function DashboardPage() {
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7"></path>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16v1a3 3 0 003 3h4a3 3 0 003-3v-1"></path>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7"
+              ></path>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M7 16v1a3 3 0 003 3h4a3 3 0 003-3v-1"
+              ></path>
             </svg>
             Logout
           </button>
@@ -199,7 +216,6 @@ export default function DashboardPage() {
           href="/session/create"
           className="flex items-center px-6 py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-xl transition transform hover:-translate-y-1 mb-4 sm:mb-0"
         >
-          {/* Plus Icon */}
           <svg
             className="w-5 h-5 mr-2"
             fill="none"
@@ -207,26 +223,38 @@ export default function DashboardPage() {
             viewBox="0 0 24 24"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 4v16m8-8H4"
+            ></path>
           </svg>
           Create New Session
         </Link>
-        <button
-          onClick={handleDeleteSelected}
-          className="flex items-center px-6 py-3 bg-red-600 text-white font-semibold rounded-md shadow hover:shadow-xl transition transform hover:-translate-y-1"
-        >
-          {/* Trash Icon */}
-          <svg
-            className="w-5 h-5 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
+        {/* Only show Delete Selected button if any sessions are checked */}
+        {selectedSessions.length > 0 && (
+          <button
+            onClick={handleDeleteSelected}
+            className="flex items-center px-4 py-2 text-red-600 font-semibold rounded-md transition hover:underline"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-          </svg>
-          Delete Selected
-        </button>
+            <svg
+              className="w-4 h-4 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3"
+              ></path>
+            </svg>
+            Delete Selected
+          </button>
+        )}
       </motion.div>
 
       {/* Sessions Table */}
@@ -294,7 +322,6 @@ export default function DashboardPage() {
                       href={`/conclusion/${session.id}`}
                       className="flex items-center text-pink-600 hover:underline justify-center"
                     >
-                      {/* Eye Icon */}
                       <svg
                         className="w-5 h-5 mr-1"
                         fill="none"
