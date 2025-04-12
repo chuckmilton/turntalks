@@ -1,19 +1,30 @@
-'use client';
-import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import Rating from '@/components/Rating';
-import { useRouter, useParams } from 'next/navigation';
-import useRequireAuth from '@/hooks/useRequireAuth';
-import SpeechRecognition from 'react-speech-recognition'; // to ensure mic stops
-import { jsPDF } from 'jspdf'; // for PDF generation
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import Rating from "@/components/Rating";
+import { useRouter, useParams } from "next/navigation";
+import useRequireAuth from "@/hooks/useRequireAuth";
+import SpeechRecognition from "react-speech-recognition"; // to ensure mic stops
+import { jsPDF } from "jspdf"; // for PDF generation
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faDownload,
   faPlay,
   faPause,
   faStop,
   faSpinner,
-} from '@fortawesome/free-solid-svg-icons';
+} from "@fortawesome/free-solid-svg-icons";
+import { motion } from "framer-motion";
+
+// Utility function to convert a Blob to a base64 data URL.
+function getBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+}
 
 interface Session {
   id: string;
@@ -30,42 +41,27 @@ interface Session {
   [key: string]: unknown;
 }
 
-// Utility function to convert a Blob to a base64 data URL.
-function getBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
-}
-
 export default function ConclusionPage() {
   useRequireAuth();
-
   const params = useParams();
   const { sessionId } = params as { sessionId: string };
   const [session, setSession] = useState<Session | null>(null);
-  const [summary, setSummary] = useState<string>('');
+  const [summary, setSummary] = useState<string>("");
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const router = useRouter();
 
-  // Audio element state for controlling speech playback.
+  // Audio control state.
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
-  // State to track whether audio is playing.
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  // New state to track if the audio generation is loading.
   const [audioLoading, setAudioLoading] = useState<boolean>(false);
 
-  // A ref to track the latest summary generation request.
+  // Refs to help manage audio and summary generation.
   const latestGenRef = useRef<number>(0);
-  // A ref to track if the component is still mounted.
   const isMounted = useRef<boolean>(true);
-  // A ref to store the AbortController for the audio generation fetch.
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Stop the audio, abort pending audio generation, and update the mounted flag when the component unmounts.
+  // Cleanup on unmount: stop audio, abort pending fetch.
   useEffect(() => {
     isMounted.current = true;
     return () => {
@@ -93,9 +89,9 @@ export default function ConclusionPage() {
       const fileInput = sessionData.openai_file_id
         ? { file_id: sessionData.openai_file_id }
         : undefined;
-      const res = await fetch('/api/generate-summary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/generate-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionData, fileInput }),
       });
       const result = await res.json();
@@ -105,7 +101,8 @@ export default function ConclusionPage() {
         setSummary(summaryText);
       }
 
-      const { data: authData, error: authError } = await supabase.auth.getSession();
+      const { data: authData, error: authError } =
+        await supabase.auth.getSession();
       if (authError || !authData.session?.user) {
         if (isMounted.current)
           setErrorMessage("Authentication error. Please log in again.");
@@ -113,9 +110,9 @@ export default function ConclusionPage() {
       }
       const userId = authData.session.user.id;
       const { error } = await supabase
-        .from('sessions')
-        .update({ summary: summaryText, status: 'finished', user_id: userId })
-        .eq('id', sessionId);
+        .from("sessions")
+        .update({ summary: summaryText, status: "finished", user_id: userId })
+        .eq("id", sessionId);
       if (error && isMounted.current) {
         setErrorMessage(error.message);
       }
@@ -124,7 +121,7 @@ export default function ConclusionPage() {
         if (err instanceof Error) {
           setErrorMessage(err.message);
         } else {
-          setErrorMessage('An unexpected error occurred.');
+          setErrorMessage("An unexpected error occurred.");
         }
       }
     }
@@ -132,10 +129,8 @@ export default function ConclusionPage() {
   }
 
   // Function to generate and play summary audio.
-  // It uses the current generation id to skip outdated audio.
   const generateAndPlayAudio = async (genId: number) => {
     if (!summary) return;
-    // Prevent duplicate playback if audio is already playing.
     if (audioElement && isPlaying) return;
     if (audioElement) {
       audioElement.pause();
@@ -144,21 +139,19 @@ export default function ConclusionPage() {
       setIsPlaying(false);
     }
 
-    setAudioLoading(true); // Start the loading spinner
-
-    // Create a new AbortController and store it.
+    setAudioLoading(true);
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
     try {
-      const res = await fetch('/api/generate-speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/generate-speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: summary,
-          voice: 'nova',
+          voice: "nova",
           instructions:
-            'Tone: The voice should be refined, formal, and delightfully theatrical, reminiscent of a charming radio announcer from the early 20th century. Pacing: The speech should flow smoothly at a steady cadence, neither rushed nor sluggish, allowing for clarity and a touch of grandeur. Pronunciation: Words should be enunciated crisply and elegantly, with an emphasis on vintage expressions and a slight flourish on key phrases. Emotion: The delivery should feel warm, enthusiastic, and welcoming, as if addressing a distinguished audience with utmost politeness. Inflection: Gentle rises and falls in pitch should be used to maintain engagement, adding a playful yet dignified flair to each sentence. Word Choice: The script should incorporate vintage expressions like splendid, marvelous, posthaste, and ta-ta for now, avoiding modern slang.',
+            "Tone: The voice should be refined, formal, and delightfully theatrical, reminiscent of a charming radio announcer from the early 20th century. Pacing: The speech should flow smoothly at a steady cadence, neither rushed nor sluggish, allowing for clarity and a touch of grandeur. Pronunciation: Words should be enunciated crisply and elegantly, with an emphasis on vintage expressions and a slight flourish on key phrases. Emotion: The delivery should feel warm, enthusiastic, and welcoming, as if addressing a distinguished audience with utmost politeness. Inflection: Gentle rises and falls in pitch should be used to maintain engagement, adding a playful yet dignified flair to each sentence. Word Choice: The script should incorporate vintage expressions like splendid, marvelous, posthaste, and ta-ta for now, avoiding modern slang.",
         }),
         signal: controller.signal,
       });
@@ -168,24 +161,23 @@ export default function ConclusionPage() {
         return;
       }
       const audioBuffer = await res.arrayBuffer();
-      const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+      const blob = new Blob([audioBuffer], { type: "audio/mpeg" });
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
       if (genId !== latestGenRef.current) {
         setAudioLoading(false);
         return;
       }
-      // Listen for 'ended' event to reset playback controls.
-      audio.addEventListener('ended', () => {
+      audio.addEventListener("ended", () => {
         if (isMounted.current) setIsPlaying(false);
       });
-      // Auto-play the audio.
-      audio.play()
+      audio
+        .play()
         .then(() => {
           if (genId === latestGenRef.current && isMounted.current) {
             setAudioElement(audio);
             setIsPlaying(true);
-            setAudioLoading(false); // Audio loaded and playing; stop spinner.
+            setAudioLoading(false);
           }
         })
         .catch((err) => {
@@ -197,7 +189,7 @@ export default function ConclusionPage() {
           }
         });
     } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
+      if (err instanceof DOMException && err.name === "AbortError") {
         setAudioLoading(false);
         return;
       }
@@ -212,31 +204,31 @@ export default function ConclusionPage() {
     }
   };
 
-  // Download summary as a nicely formatted PDF with the logo.
+  // Download summary as a nicely formatted PDF with your logo.
   const handleDownloadPDF = async () => {
     if (!summary || !session) return;
 
     const doc = new jsPDF({
-      unit: 'pt',
-      format: 'letter',
+      unit: "pt",
+      format: "letter",
       compress: true,
     });
 
     try {
-      const response = await fetch('/logo.png');
+      const response = await fetch("/logo.png");
       if (!response.ok) {
         throw new Error("Failed to fetch logo image.");
       }
       const logoBlob = await response.blob();
       const logoDataUrl = await getBase64(logoBlob);
-      doc.addImage(logoDataUrl, 'PNG', 40, 20, 80, 80);
+      doc.addImage(logoDataUrl, "PNG", 40, 20, 80, 80);
     } catch (err: unknown) {
       console.error("Error fetching logo:", err);
     }
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
-    doc.text("Session Summary", 140, 60);
+    doc.text("Session Conclusion", 140, 60);
 
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
@@ -260,20 +252,21 @@ export default function ConclusionPage() {
 
     const summaryY = session.end_goal ? 330 : 270;
     doc.setFont("helvetica", "bold");
-    doc.text("Summary:", 40, summaryY);
+    doc.text("Description:", 40, summaryY);
     doc.setFont("helvetica", "normal");
     const summaryLines = doc.splitTextToSize(summary, 520);
     doc.text(summaryLines, 40, summaryY + 20);
 
-    doc.save('Session-Summary.pdf');
+    doc.save("Session-Conclusion.pdf");
   };
 
+  // Fetch session details and generate summary if needed.
   useEffect(() => {
     async function fetchSession() {
       const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('id', sessionId)
+        .from("sessions")
+        .select("*")
+        .eq("id", sessionId)
         .single();
       if (error) {
         setErrorMessage(error.message);
@@ -290,6 +283,7 @@ export default function ConclusionPage() {
     fetchSession();
   }, [sessionId]);
 
+  // When summary updates, generate and play audio.
   useEffect(() => {
     if (summary) {
       latestGenRef.current = Date.now();
@@ -297,6 +291,7 @@ export default function ConclusionPage() {
     }
   }, [summary]);
 
+  // Audio control handlers.
   const handlePlay = () => {
     if (audioElement) {
       audioElement.play();
@@ -320,33 +315,64 @@ export default function ConclusionPage() {
   };
 
   if (!session)
-    return <p className="text-center mt-10 text-gray-600">Loading session data...</p>;
+    return (
+      <p className="text-center mt-10 text-gray-600">
+        Loading session data...
+      </p>
+    );
 
   return (
-    <div className="max-w-2xl mx-auto p-8 bg-white shadow-lg rounded-xl animate-fadeInUp">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className="relative max-w-5xl mx-auto p-10 bg-white shadow-2xl rounded-xl animate-fadeInUp"
+    >
       {errorMessage && (
         <div className="mb-6 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
           {errorMessage}
         </div>
       )}
-      <h2 className="text-3xl font-bold mb-6 text-gray-800">Session Summary</h2>
+      <motion.h2
+        className="text-4xl font-bold mb-8 text-gray-800 text-center bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.6 }}
+      >
+        Session Conclusion
+      </motion.h2>
 
-      {/* Display Prompt */}
-      <div className="mb-6">
+      {/* Prompt */}
+      <motion.div
+        className="mb-8 p-6 border border-gray-200 rounded-lg shadow-md bg-gray-50"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.3, duration: 0.6 }}
+      >
         <h3 className="font-bold text-xl text-gray-700 mb-2">Prompt:</h3>
         <p className="text-gray-700">{session.prompt}</p>
-      </div>
+      </motion.div>
 
-      {/* Display End Goal if available */}
+      {/* End Goal */}
       {session.end_goal && (
-        <div className="mb-6">
+        <motion.div
+          className="mb-8 p-6 border border-gray-200 rounded-lg shadow-md bg-gray-50"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+        >
           <h3 className="font-bold text-xl text-gray-700 mb-2">End Goal:</h3>
           <p className="text-gray-700">{session.end_goal}</p>
-        </div>
+        </motion.div>
       )}
 
-      {/* Display Participants */}
-      <div className="mb-6">
+      {/* Participants */}
+      <motion.div
+        className="mb-8 p-6 border border-gray-200 rounded-lg shadow-md bg-gray-50"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.5, duration: 0.6 }}
+      >
         <h3 className="font-bold text-xl text-gray-700 mb-2">Participants:</h3>
         {session.participants.length > 0 ? (
           <ul className="list-disc list-inside text-gray-700">
@@ -357,66 +383,117 @@ export default function ConclusionPage() {
         ) : (
           <p className="text-gray-700">No participants listed.</p>
         )}
-      </div>
+      </motion.div>
 
-      {/* Display Summary, Download PDF and Audio controls */}
+      {/* Summary & Audio Controls */}
       {loadingSummary ? (
-        <p className="mb-6 text-center text-gray-500 italic">Generating Summary...</p>
+        <motion.p
+          className="mb-8 text-center text-gray-500 italic"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.6 }}
+        >
+          Generating Summary...
+        </motion.p>
       ) : (
         summary && (
-          <div className="mb-6">
-            <div className="p-6 border border-gray-300 rounded bg-gray-50 mb-4 animate-fadeIn">
-              <h3 className="font-bold text-xl text-gray-700 mb-2">Summary:</h3>
+          <motion.div
+            className="mb-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.6 }}
+          >
+            <div className="p-6 border border-gray-300 rounded-lg bg-gray-50 shadow-md animate-fadeIn">
+              <h3 className="font-bold text-xl text-gray-700 mb-2">Description:</h3>
               <p className="text-gray-700 leading-relaxed">{summary}</p>
             </div>
-            <div className="flex gap-4 justify-center mb-4">
-              <button
+            <div className="flex gap-6 justify-center items-center mt-4">
+              <motion.button
                 onClick={handleDownloadPDF}
-                title="Download Summary as PDF"
+                title="Download Conclusion as PDF"
+                whileHover={{ scale: 1.1 }}
                 className="flex items-center justify-center"
               >
-                <FontAwesomeIcon icon={faDownload} className="text-3xl text-green-600 hover:text-green-700 transition" />
-              </button>
-              {/* Show loading spinner if audio is loading; otherwise show play/pause/stop controls */}
+                <FontAwesomeIcon
+                  icon={faDownload}
+                  className="text-3xl text-green-600 hover:text-green-700 transition"
+                />
+              </motion.button>
               {audioLoading ? (
-                <div className="flex items-center justify-center">
-                  <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-blue-600" />
-                </div>
-              ) : (
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.6 }}
+                  className="flex items-center justify-center"
+                >
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    className="text-3xl text-blue-600"
+                  />
+                </motion.div>
+              ) : isPlaying ? (
                 <>
-                  {isPlaying ? (
-                    <>
-                      <button onClick={handlePause} title="Pause Audio" className="flex items-center justify-center">
-                        <FontAwesomeIcon icon={faPause} className="text-3xl text-yellow-600 hover:text-yellow-700 transition" />
-                      </button>
-                      <button onClick={handleStop} title="Stop Audio" className="flex items-center justify-center">
-                        <FontAwesomeIcon icon={faStop} className="text-3xl text-red-600 hover:text-red-700 transition" />
-                      </button>
-                    </>
-                  ) : (
-                    <button onClick={handlePlay} title="Play Audio" className="flex items-center justify-center">
-                      <FontAwesomeIcon icon={faPlay} className="text-3xl text-blue-600 hover:text-blue-700 transition" />
-                    </button>
-                  )}
+                  <motion.button
+                    onClick={handlePause}
+                    title="Pause Audio"
+                    whileHover={{ scale: 1.1 }}
+                    className="flex items-center justify-center"
+                  >
+                    <FontAwesomeIcon
+                      icon={faPause}
+                      className="text-3xl text-yellow-600 hover:text-yellow-700 transition"
+                    />
+                  </motion.button>
+                  <motion.button
+                    onClick={handleStop}
+                    title="Stop Audio"
+                    whileHover={{ scale: 1.1 }}
+                    className="flex items-center justify-center"
+                  >
+                    <FontAwesomeIcon
+                      icon={faStop}
+                      className="text-3xl text-red-600 hover:text-red-700 transition"
+                    />
+                  </motion.button>
                 </>
+              ) : (
+                <motion.button
+                  onClick={handlePlay}
+                  title="Play Audio"
+                  whileHover={{ scale: 1.1 }}
+                  className="flex items-center justify-center"
+                >
+                  <FontAwesomeIcon
+                    icon={faPlay}
+                    className="text-3xl text-blue-600 hover:text-blue-700 transition"
+                  />
+                </motion.button>
               )}
             </div>
-          </div>
+          </motion.div>
         )
       )}
 
       {/* Rating Section */}
-      <div className="mb-6">
+      <motion.div
+        className="mb-8 p-6 border border-gray-200 rounded-lg shadow-md bg-gray-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.7, duration: 0.6 }}
+      >
         <h3 className="font-bold text-xl mb-2 text-gray-800">Rate the Session:</h3>
         <Rating sessionId={sessionId} initialRating={session.rating} />
-      </div>
+      </motion.div>
 
-      <button
-        onClick={() => router.push('/dashboard')}
-        className="w-full py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+      {/* Back to Dashboard */}
+      <motion.button
+        onClick={() => router.push("/dashboard")}
+        whileHover={{ scale: 1.05 }}
+        className="w-full py-3 bg-pink-600 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-1"
       >
         Back to Dashboard
-      </button>
-    </div>
+      </motion.button>
+    </motion.div>
   );
 }
