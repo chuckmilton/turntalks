@@ -1,8 +1,4 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 // This endpoint generates spoken audio from text using OpenAI's TTS.
 // You can adjust the model, voice, and instructions as needed.
 export async function POST(req: Request) {
