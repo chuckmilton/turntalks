@@ -59,11 +59,10 @@ ${message}
     });
 
     return NextResponse.json({ success: true, data: res.data });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Error sending email:", err);
-    return NextResponse.json(
-      { success: false, error: err.message || "Server error" },
-      { status: 500 }
-    );
+    const errorMessage =
+      err instanceof Error ? err.message : "Server error";
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }
