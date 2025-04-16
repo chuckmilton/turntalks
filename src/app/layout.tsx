@@ -7,21 +7,44 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <title>TurnTalks</title>
-        <meta name="description" content="An interactive AI-powered book club experience" />
+        <meta
+          name="description"
+          content="An interactive AI-powered book club experience"
+        />
 
         {/* Favicon */}
         <link rel="shortcut icon" href="/favicon.ico" />
 
         {/* Standard Favicons */}
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="16x16"
+          href="/favicon-16x16.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/favicon-32x32.png"
+        />
 
         {/* Apple Touch Icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
         {/* Android Chrome Icons */}
-        <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="192x192"
+          href="/android-chrome-192x192.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="512x512"
+          href="/android-chrome-512x512.png"
+        />
 
         {/* Web App Manifest */}
         <link rel="manifest" href="/site.webmanifest" />
@@ -42,7 +65,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* Main content */}
         <main className="flex-1 flex flex-col">
-          <div className="flex-1 max-w-7xl mx-auto w-full px-6 py-8">{children}</div>
+          <div className="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+            {children}
+          </div>
         </main>
 
         {/* Footer */}
@@ -50,18 +75,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-7xl mx-auto px-6 text-center text-gray-500 text-sm">
             &copy; {new Date().getFullYear()} TurnTalks. All rights reserved.
             <div className="mt-2">
-              <Link 
-                href="/terms-of-service" 
-                className="hover:text-gray-700 mx-2"
-              >
+              <Link href="/terms-of-service" className="hover:text-gray-700 mx-2">
                 Terms of Service
               </Link>
               <span className="mx-2">|</span>
-              <Link 
-                href="/privacy-policy" 
-                className="hover:text-gray-700 mx-2"
-              >
+              <Link href="/privacy-policy" className="hover:text-gray-700 mx-2">
                 Privacy Policy
+              </Link>
+              <span className="mx-2">|</span>
+              <Link href="/contact" className="hover:text-gray-700 mx-2">
+                Contact
               </Link>
             </div>
           </div>
