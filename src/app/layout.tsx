@@ -30,7 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Header / Navbar */}
         <header className="relative z-10 bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <Link href="/" className="cursor-pointer hover:scale-105 transition-transform duration-300">
+            <Link
+              href="/"
+              className="cursor-pointer hover:scale-105 transition-transform duration-300"
+            >
               <img src="/logo.png" alt="TurnTalks Logo" className="h-16 w-auto" />
             </Link>
             <Navbar />
@@ -46,6 +49,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="bg-white border-t py-6">
           <div className="max-w-7xl mx-auto px-6 text-center text-gray-500 text-sm">
             &copy; {new Date().getFullYear()} TurnTalks. All rights reserved.
+            <div className="mt-2">
+              <Link 
+                href="/terms-of-service" 
+                className="hover:text-gray-700 mx-2"
+              >
+                Terms of Service
+              </Link>
+              <span className="mx-2">|</span>
+              <Link 
+                href="/privacy-policy" 
+                className="hover:text-gray-700 mx-2"
+              >
+                Privacy Policy
+              </Link>
+            </div>
           </div>
         </footer>
       </body>
