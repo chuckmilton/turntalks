@@ -22,7 +22,7 @@ export default function TermsOfService() {
       >
         <h2 className="text-2xl font-bold text-gray-700 mb-4">1. Introduction</h2>
         <p className="text-gray-600 leading-relaxed">
-          Welcome to TurnTalks. By accessing or using our website, applications, or services (collectively, "Services"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you must not use our Services.
+          Welcome to TurnTalks. By accessing or using our website, applications, or services (collectively, &quot;Services&quot;), you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, you must not use our Services.
         </p>
       </motion.section>
 

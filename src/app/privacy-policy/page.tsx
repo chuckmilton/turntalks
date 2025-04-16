@@ -22,7 +22,7 @@ export default function PrivacyPolicy() {
       >
         <h2 className="text-2xl font-bold text-gray-700 mb-4">Introduction</h2>
         <p className="text-gray-600 leading-relaxed">
-          This Privacy Policy describes how TurnTalks ("we", "us", or "our") collects, uses, and shares information about you when you visit or use our website, mobile applications, and other services (collectively, the "Services"). By using our Services, you agree to the collection and use of your information in accordance with this policy.
+          This Privacy Policy describes how TurnTalks (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) collects, uses, and shares information about you when you visit or use our website, mobile applications, and other services (collectively, the &quot;Services&quot;). By using our Services, you agree to the collection and use of your information in accordance with this policy.
         </p>
       </motion.section>
 
@@ -76,7 +76,7 @@ export default function PrivacyPolicy() {
         transition={{ delay: 0.5, duration: 0.6 }}
         className="mb-8"
       >
-        <h2 className="text-2xl font-bold text-gray-700 mb-4">Sharing & Disclosure</h2>
+        <h2 className="text-2xl font-bold text-gray-700 mb-4">Sharing &amp; Disclosure</h2>
         <p className="text-gray-600 leading-relaxed">
           We may share your Personal Data with third parties only in the following circumstances:
         </p>
