@@ -165,7 +165,7 @@ export default function HomePage() {
                 </Link>
                 <Link
                   href="/auth/signup"
-                  className="px-8 py-3 bg-gray-200 text-gray-800 font-semibold rounded-md shadow hover:shadow-xl transition transform hover:-translate-y-1"
+                  className="text-nowrap px-8 py-3 bg-gray-200 text-gray-800 font-semibold rounded-md shadow hover:shadow-xl transition transform hover:-translate-y-1"
                 >
                   Get Started
                 </Link>
