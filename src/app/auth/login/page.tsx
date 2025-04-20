@@ -1,4 +1,21 @@
+// app/auth/login/page.tsx
 "use client";
+
+// precise typing for Google Identity Services
+declare const google: {
+  accounts?: {
+    id?: {
+      initialize(opts: {
+        client_id: string;
+        callback: (response: { credential: string }) => void;
+      }): void;
+      renderButton(
+        container: HTMLElement,
+        opts: { theme: "outline"; size: "large" }
+      ): void;
+    };
+  };
+};
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -6,12 +23,6 @@ import Head from "next/head";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import useRedirectIfAuth from "@/hooks/useRedirectIfAuth";
-
-declare global {
-  interface Window {
-    google?: any;
-  }
-}
 
 export default function LoginPage() {
   useRedirectIfAuth();
@@ -21,37 +32,41 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [resetMessage, setResetMessage] = useState("");
 
-  // memoize so we can safely add it as a dependency
-  const handleGoogleResponse = useCallback(async (response: { credential: string }) => {
-    setErrorMessage("");
-    try {
-      const { error } = await supabase.auth.signInWithIdToken({
-        provider: "google",
-        token: response.credential,
-      });
-      if (error) throw error;
-      router.push("/dashboard");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "An unexpected error occurred";
-      setErrorMessage(msg);
-    }
-  }, [router]);
+  // memoized Google callback
+  const handleGoogleResponse = useCallback(
+    async (response: { credential: string }) => {
+      setErrorMessage("");
+      try {
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: response.credential,
+        });
+        if (error) throw error;
+        router.push("/dashboard");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "An unexpected error occurred";
+        setErrorMessage(msg);
+      }
+    },
+    [router]
+  );
 
   // Google Identity Services
   useEffect(() => {
-    const g = window.google;
+    const g = google;
     if (g?.accounts?.id) {
       g.accounts.id.initialize({
         client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
         callback: handleGoogleResponse,
       });
       g.accounts.id.renderButton(
-        document.getElementById("google-signin")!,
+        document.getElementById("google-signin") as HTMLElement,
         { theme: "outline", size: "large" }
       );
     }
   }, [handleGoogleResponse]);
 
+  // Standard login
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage("");
@@ -66,6 +81,7 @@ export default function LoginPage() {
     }
   };
 
+  // Forgot Password
   const handleForgotPassword = async () => {
     setErrorMessage("");
     setResetMessage("");
