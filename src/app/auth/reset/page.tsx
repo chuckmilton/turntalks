@@ -1,5 +1,5 @@
-export const dynamic = "force-dynamic";
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -59,7 +59,11 @@ export default function ResetPasswordPage() {
     return (
       <div className="max-w-md mx-auto my-20 p-8 bg-white shadow rounded text-center">
         {message && (
-          <p className={`font-semibold ${message.includes("updated") ? "text-green-600" : "text-red-600"}`}>
+          <p
+            className={`font-semibold ${
+              message.includes("updated") ? "text-green-600" : "text-red-600"
+            }`}
+          >
             {message}
           </p>
         )}
