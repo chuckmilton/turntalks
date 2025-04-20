@@ -5,10 +5,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
 import useRedirectIfAuth from "@/hooks/useRedirectIfAuth";
 
-// extend window.google
+// extend window.google typing
 declare global {
   interface Window {
     google?: {
@@ -34,31 +33,36 @@ export default function SignupPage() {
   const router = useRouter();
 
   const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [email, setEmail]           = useState("");
+  const [password, setPassword]     = useState("");
+  const [confirmPassword, setConfirm] = useState("");
+  const [errorMessage, setError]    = useState("");
+  const [successMessage, setSuccess] = useState("");
 
   // 1️⃣ Google callback
   const handleGoogleResponse = useCallback(
     async (response: { credential: string }) => {
-      setErrorMessage("");
+      setError("");
       try {
-        const { error } = await supabase.auth.signInWithIdToken({
-          provider: "google",
-          token: response.credential,
-        });
+        // This will sign in or sign up via the ID token
+        const { error } = await import("@/lib/supabaseClient")
+          .then(({ supabase }) =>
+            supabase.auth.signInWithIdToken({
+              provider: "google",
+              token: response.credential,
+            })
+          );
         if (error) throw error;
         router.push("/dashboard");
       } catch (err: unknown) {
-        setErrorMessage(err instanceof Error ? err.message : "Google signup failed");
+        const msg = err instanceof Error ? err.message : "Google signup failed";
+        setError(msg);
       }
     },
     [router]
   );
 
-  // 2️⃣ Init GSI
+  // 2️⃣ Init GSI once
   useEffect(() => {
     const interval = setInterval(() => {
       if (window.google?.accounts?.id) {
@@ -80,46 +84,44 @@ export default function SignupPage() {
   // 3️⃣ Email/password signup
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage("");
-    setSuccessMessage("");
+    setError("");
+    setSuccess("");
     if (password !== confirmPassword) {
-      return setErrorMessage("Passwords do not match.");
+      return setError("Passwords do not match.");
     }
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { display_name: displayName } },
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, displayName }),
       });
-      if (error) throw error;
-      setSuccessMessage(
-        "Confirmation sent—check your inbox to activate your account."
-      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || res.statusText);
+      setSuccess("Confirmation sent—check your inbox.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Signup failed";
-      if (msg.toLowerCase().includes("duplicate")) {
-        setErrorMessage("Email already registered. Please log in.");
-      } else {
-        setErrorMessage(msg);
-      }
+      setError(msg.includes("duplicate") ? "Email already registered. Please log in." : msg);
     }
   };
 
   return (
     <>
-      {/* load GSI script */}
+      {/* Load Google Identity Services */}
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
 
-      <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl">
-        <h2 className="text-4xl font-bold mb-6 text-center">Sign Up</h2>
+      <div className="max-w-lg mx-auto p-10 bg-white shadow rounded">
+        <h2 className="text-2xl font-bold mb-6 text-center">Sign Up</h2>
 
-        {errorMessage && <div className="p-3 bg-red-100 text-red-600 mb-6">{errorMessage}</div>}
-        {successMessage && <div className="p-3 bg-green-100 text-green-600 mb-6">{successMessage}</div>}
+        {errorMessage && <div className="mb-4 p-3 bg-red-100 text-red-600">{errorMessage}</div>}
+        {successMessage && <div className="mb-4 p-3 bg-green-100 text-green-600">{successMessage}</div>}
 
-        {/* Google button */}
+        {/* Google Sign‑Up Button */}
         <div id="google-signup" className="mb-6 flex justify-center"></div>
 
-        {/* email/password */}
+        {/* OR */}
+        <div className="text-center mb-6 text-gray-500">or sign up with email</div>
+
+        {/* Email/Password Form */}
         <form onSubmit={handleSignup}>
           <label className="block mb-4">
             <span>Display Name</span>
@@ -157,11 +159,13 @@ export default function SignupPage() {
               type="password"
               className="w-full border p-2 rounded mt-1"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => setConfirm(e.target.value)}
               required
             />
           </label>
-          <button className="w-full py-2 bg-pink-600 text-white rounded">Sign Up</button>
+          <button className="w-full py-2 bg-pink-600 text-white rounded hover:bg-pink-700">
+            Sign Up
+          </button>
         </form>
 
         <p className="mt-6 text-center">
