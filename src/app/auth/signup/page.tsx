@@ -1,9 +1,8 @@
-// app/auth/signup/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Head from "next/head";
+import Script from "next/script";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import useRedirectIfAuth from "@/hooks/useRedirectIfAuth";
@@ -39,7 +38,7 @@ export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // memoized Google callback
+  // 1️⃣ Memoized Google callback
   const handleGoogleResponse = useCallback(
     async (response: { credential: string }) => {
       setErrorMessage("");
@@ -58,22 +57,16 @@ export default function SignupPage() {
     [router]
   );
 
-  // Google Identity Services
+  // 2️⃣ AfterInteractive script to init GSI
+  //    & render button into #google-signup
+  //    no need for useEffect
+  //    you can optionally call this in onLoad
+  //    if you want to re-render on every mount.
   useEffect(() => {
-    const g = typeof window !== "undefined" ? window.google : undefined;
-    if (g?.accounts?.id) {
-      g.accounts.id.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-        callback: handleGoogleResponse,
-      });
-      g.accounts.id.renderButton(
-        document.getElementById("google-signup") as HTMLElement,
-        { theme: "outline", size: "large" }
-      );
-    }
-  }, [handleGoogleResponse]);
+    // nothing here anymore
+  }, []);
 
-  // email/password sign‑up
+  // 3️⃣ Email/password sign‑up
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage("");
@@ -109,9 +102,25 @@ export default function SignupPage() {
 
   return (
     <>
-      <Head>
-        <script src="https://accounts.google.com/gsi/client" async defer />
-      </Head>
+      {/* load the GSI script once */}
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => {
+          const g = window.google;
+          if (g?.accounts?.id) {
+            g.accounts.id.initialize({
+              client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+              callback: handleGoogleResponse,
+            });
+            g.accounts.id.renderButton(
+              document.getElementById("google-signup") as HTMLElement,
+              { theme: "outline", size: "large" }
+            );
+          }
+        }}
+      />
+
       <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
         <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
 
@@ -126,7 +135,7 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* Google Sign‑Up */}
+        {/* Google Sign‑Up placeholder */}
         <div id="google-signup" className="mb-6 flex justify-center" />
 
         {/* Email/Password Form */}

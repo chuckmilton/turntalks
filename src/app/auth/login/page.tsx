@@ -1,14 +1,13 @@
-// app/auth/login/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Head from "next/head";
+import Script from "next/script";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import useRedirectIfAuth from "@/hooks/useRedirectIfAuth";
 
-// Tell TypeScript about window.google
+// Extend window.google typing
 declare global {
   interface Window {
     google?: {
@@ -31,13 +30,12 @@ declare global {
 export default function LoginPage() {
   useRedirectIfAuth();
   const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [resetMessage, setResetMessage] = useState("");
 
-  // memoized Google callback
+  // 1️⃣ Memoized Google callback
   const handleGoogleResponse = useCallback(
     async (response: { credential: string }) => {
       setErrorMessage("");
@@ -56,22 +54,7 @@ export default function LoginPage() {
     [router]
   );
 
-  // Google Identity Services
-  useEffect(() => {
-    const g = typeof window !== "undefined" ? window.google : undefined;
-    if (g?.accounts?.id) {
-      g.accounts.id.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-        callback: handleGoogleResponse,
-      });
-      g.accounts.id.renderButton(
-        document.getElementById("google-signin") as HTMLElement,
-        { theme: "outline", size: "large" }
-      );
-    }
-  }, [handleGoogleResponse]);
-
-  // standard email/password login
+  // 2️⃣ Standard login
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage("");
@@ -86,7 +69,7 @@ export default function LoginPage() {
     }
   };
 
-  // forgot password
+  // 3️⃣ Forgot password
   const handleForgotPassword = async () => {
     setErrorMessage("");
     setResetMessage("");
@@ -111,9 +94,25 @@ export default function LoginPage() {
 
   return (
     <>
-      <Head>
-        <script src="https://accounts.google.com/gsi/client" async defer />
-      </Head>
+      {/* 4️⃣ Load the GSI script only once, after hydration */}
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => {
+          const g = window.google;
+          if (g?.accounts?.id) {
+            g.accounts.id.initialize({
+              client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+              callback: handleGoogleResponse,
+            });
+            g.accounts.id.renderButton(
+              document.getElementById("google-signin") as HTMLElement,
+              { theme: "outline", size: "large" }
+            );
+          }
+        }}
+      />
+
       <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
         <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Login</h2>
 
@@ -128,7 +127,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Google Sign‑In */}
+        {/* Google Sign‑In placeholder */}
         <div id="google-signin" className="mb-6 flex justify-center" />
 
         {/* Email/Password Form */}
