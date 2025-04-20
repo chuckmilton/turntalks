@@ -102,7 +102,7 @@ export default function LoginPage() {
           const g = window.google;
           if (g?.accounts?.id) {
             g.accounts.id.initialize({
-              client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+              client_id: process.env.CLIENT_ID!,
               callback: handleGoogleResponse,
             });
             g.accounts.id.renderButton(
