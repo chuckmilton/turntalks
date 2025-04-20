@@ -1,3 +1,4 @@
+// app/auth/signup/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -7,7 +8,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import useRedirectIfAuth from "@/hooks/useRedirectIfAuth";
 
-// Tell TypeScript about window.google
+// extend window.google
 declare global {
   interface Window {
     google?: {
@@ -15,7 +16,8 @@ declare global {
         id?: {
           initialize(opts: {
             client_id: string;
-            callback: (response: { credential: string }) => void;
+            callback: (resp: { credential: string }) => void;
+            ux_mode?: "popup";
           }): void;
           renderButton(
             container: HTMLElement,
@@ -38,7 +40,7 @@ export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // 1️⃣ Memoized Google callback
+  // 1️⃣ Google callback
   const handleGoogleResponse = useCallback(
     async (response: { credential: string }) => {
       setErrorMessage("");
@@ -50,33 +52,39 @@ export default function SignupPage() {
         if (error) throw error;
         router.push("/dashboard");
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Unexpected error";
-        setErrorMessage(msg);
+        setErrorMessage(err instanceof Error ? err.message : "Google signup failed");
       }
     },
     [router]
   );
 
-  // 2️⃣ AfterInteractive script to init GSI
-  //    & render button into #google-signup
-  //    no need for useEffect
-  //    you can optionally call this in onLoad
-  //    if you want to re-render on every mount.
+  // 2️⃣ Init GSI
   useEffect(() => {
-    // nothing here anymore
-  }, []);
+    const interval = setInterval(() => {
+      if (window.google?.accounts?.id) {
+        clearInterval(interval);
+        window.google.accounts.id.initialize({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+          callback: handleGoogleResponse,
+          ux_mode: "popup",
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById("google-signup") as HTMLElement,
+          { theme: "outline", size: "large" }
+        );
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [handleGoogleResponse]);
 
-  // 3️⃣ Email/password sign‑up
-  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+  // 3️⃣ Email/password signup
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
-
     if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match.");
-      return;
+      return setErrorMessage("Passwords do not match.");
     }
-
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -85,15 +93,12 @@ export default function SignupPage() {
       });
       if (error) throw error;
       setSuccessMessage(
-        "A confirmation email has been sent. Please check your inbox to activate your account."
+        "Confirmation sent—check your inbox to activate your account."
       );
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unexpected error";
-      if (
-        msg.toLowerCase().includes("duplicate") ||
-        msg.toLowerCase().includes("already registered")
-      ) {
-        setErrorMessage("This email is already registered. Please log in instead.");
+      const msg = err instanceof Error ? err.message : "Signup failed";
+      if (msg.toLowerCase().includes("duplicate")) {
+        setErrorMessage("Email already registered. Please log in.");
       } else {
         setErrorMessage(msg);
       }
@@ -102,101 +107,66 @@ export default function SignupPage() {
 
   return (
     <>
-      {/* load the GSI script once */}
-      <Script
-        src="https://accounts.google.com/gsi/client"
-        strategy="afterInteractive"
-        onLoad={() => {
-          const g = window.google;
-          if (g?.accounts?.id) {
-            g.accounts.id.initialize({
-              client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-              callback: handleGoogleResponse,
-            });
-            g.accounts.id.renderButton(
-              document.getElementById("google-signup") as HTMLElement,
-              { theme: "outline", size: "large" }
-            );
-          }
-        }}
-      />
+      {/* load GSI script */}
+      <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
 
-      <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
-        <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+      <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl">
+        <h2 className="text-4xl font-bold mb-6 text-center">Sign Up</h2>
 
-        {!!errorMessage && (
-          <div className="mb-6 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
-            {errorMessage}
-          </div>
-        )}
-        {!!successMessage && (
-          <div className="mb-6 p-3 bg-green-100 text-green-600 border border-green-200 rounded">
-            {successMessage}
-          </div>
-        )}
+        {errorMessage && <div className="p-3 bg-red-100 text-red-600 mb-6">{errorMessage}</div>}
+        {successMessage && <div className="p-3 bg-green-100 text-green-600 mb-6">{successMessage}</div>}
 
-        {/* Google Sign‑Up placeholder */}
-        <div id="google-signup" className="mb-6 flex justify-center" />
+        {/* Google button */}
+        <div id="google-signup" className="mb-6 flex justify-center"></div>
 
-        {/* Email/Password Form */}
-        {!successMessage && (
-          <form onSubmit={handleSignup}>
-            <label className="block mb-4">
-              <span className="block text-gray-700 font-semibold mb-1">Display Name:</span>
-              <input
-                type="text"
-                className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required
-              />
-            </label>
+        {/* email/password */}
+        <form onSubmit={handleSignup}>
+          <label className="block mb-4">
+            <span>Display Name</span>
+            <input
+              type="text"
+              className="w-full border p-2 rounded mt-1"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              required
+            />
+          </label>
+          <label className="block mb-4">
+            <span>Email</span>
+            <input
+              type="email"
+              className="w-full border p-2 rounded mt-1"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </label>
+          <label className="block mb-4">
+            <span>Password</span>
+            <input
+              type="password"
+              className="w-full border p-2 rounded mt-1"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </label>
+          <label className="block mb-6">
+            <span>Confirm Password</span>
+            <input
+              type="password"
+              className="w-full border p-2 rounded mt-1"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </label>
+          <button className="w-full py-2 bg-pink-600 text-white rounded">Sign Up</button>
+        </form>
 
-            <label className="block mb-4">
-              <span className="block text-gray-700 font-semibold mb-1">Email:</span>
-              <input
-                type="email"
-                className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </label>
-
-            <label className="block mb-4">
-              <span className="block text-gray-700 font-semibold mb-1">Password:</span>
-              <input
-                type="password"
-                className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </label>
-
-            <label className="block mb-6">
-              <span className="block text-gray-700 font-semibold mb-1">Confirm Password:</span>
-              <input
-                type="password"
-                className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </label>
-
-            <button
-              type="submit"
-              className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
-            >
-              Sign Up
-            </button>
-          </form>
-        )}
-
-        <p className="mt-6 text-center text-gray-600">
+        <p className="mt-6 text-center">
           Already have an account?{" "}
-          <Link href="/auth/login" className="text-pink-600 hover:text-pink-700 font-bold">
+          <Link href="/auth/login" className="text-pink-600 font-bold">
             Login
           </Link>
         </p>
