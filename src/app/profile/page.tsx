@@ -29,7 +29,11 @@ export default function ProfilePage() {
       if (error) {
         setProfileMessage(`Error fetching user: ${error.message}`);
       } else if (user) {
-        setDisplayName(user.user_metadata?.display_name || '');
+        setDisplayName(
+          user.user_metadata?.display_name 
+          || user.user_metadata?.name 
+          || ''
+        );        
         setEmail(user.email || '');
       }
       setLoading(false);
