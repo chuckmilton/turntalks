@@ -1,80 +1,108 @@
-'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+// app/auth/reset/page.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function ResetPasswordPage() {
+  const params = useSearchParams();
   const router = useRouter();
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const code = params.get("code");
 
-  const handleReset = async (e: React.FormEvent) => {
+  const [stage, setStage] = useState<"verifying" | "form" | "done">("verifying");
+  const [message, setMessage] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  // 1️⃣ On mount, exchange the code for a session
+  useEffect(() => {
+    if (!code) {
+      setMessage("Invalid or missing link.");
+      setStage("done");
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        setMessage(error.message);
+        setStage("done");
+      } else {
+        // session is now set in storage—show the form
+        setStage("form");
+      }
+    })();
+  }, [code]);
+
+  // 2️⃣ Handle form submit
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
+    setMessage(null);
 
     if (newPassword !== confirmPassword) {
-      setErrorMessage('Passwords do not match.');
+      setMessage("Passwords do not match.");
       return;
     }
 
-    // Supabase automatically detects the recovery token from the URL.
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
-      setErrorMessage(error.message);
+      setMessage(error.message);
     } else {
-      setSuccessMessage('Password updated successfully. Redirecting to dashboard...');
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 2000);
+      setStage("done");
+      setMessage("Password updated! Redirecting to login…");
+      setTimeout(() => router.push("/auth/login"), 2000);
     }
   };
 
+  // 3️⃣ Render based on stage
+  if (stage === "verifying") {
+    return <p className="text-center mt-20">Verifying link…</p>;
+  }
+
+  if (stage === "done") {
+    return (
+      <div className="max-w-md mx-auto my-20 p-8 bg-white shadow rounded text-center">
+        {message && (
+          <p className={`font-semibold ${message.includes("updated") ? "text-green-600" : "text-red-600"}`}>
+            {message}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // stage === "form"
   return (
-    <div className="max-w-xl mx-auto my-10 p-10 bg-white shadow-lg rounded-xl">
-      <h2 className="text-3xl font-bold mb-6 text-center">Reset Password</h2>
-      {errorMessage && (
-        <div className="mb-4 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
-          {errorMessage}
-        </div>
-      )}
-      {successMessage && (
-        <div className="mb-4 p-3 bg-green-100 text-green-600 border border-green-200 rounded">
-          {successMessage}
-        </div>
-      )}
-      <form onSubmit={handleReset}>
+    <div className="max-w-md mx-auto my-20 p-8 bg-white shadow rounded">
+      <h2 className="text-2xl font-bold mb-4 text-center">Reset Password</h2>
+      {message && <p className="mb-4 text-center text-red-600">{message}</p>}
+      <form onSubmit={handleSubmit}>
         <label className="block mb-4">
-          <span className="block text-gray-700 font-semibold mb-1">New Password:</span>
+          <span>New Password</span>
           <input
             type="password"
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            className="w-full border p-2 rounded mt-1"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
           />
         </label>
         <label className="block mb-6">
-          <span className="block text-gray-700 font-semibold mb-1">Confirm Password:</span>
+          <span>Confirm Password</span>
           <input
             type="password"
-            className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            className="w-full border p-2 rounded mt-1"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
           />
         </label>
-        {/* Only show the Reset Password button if successMessage is not set */}
-        {!successMessage && (
-          <button
-            type="submit"
-            className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow transition-transform hover:-translate-y-0.5"
-          >
-            Reset Password
-          </button>
-        )}
+        <button
+          type="submit"
+          className="w-full bg-pink-600 text-white py-2 rounded hover:bg-pink-700"
+        >
+          Update Password
+        </button>
       </form>
     </div>
   );
