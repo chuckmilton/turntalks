@@ -2,62 +2,65 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function ClientReset() {
-  const params = useSearchParams();
   const router = useRouter();
-  const code = params.get("code") ?? "";
+  const [stage, setStage] = useState<"loading" | "form" | "done">("loading");
+  const [msg, setMsg] = useState<string>("");
 
-  const [stage, setStage] = useState<"verifying" | "form" | "done">("verifying");
-  const [msg, setMsg] = useState<string | null>(null);
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
 
+  // 1️⃣ On mount, check for an active session
   useEffect(() => {
-    if (!code) {
-      setMsg("Invalid or missing link.");
-      return setStage("done");
-    }
     (async () => {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) {
-        setMsg(error.message);
-        setStage("done");
-      } else {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        // user has been logged in by the recovery flow
         setStage("form");
+      } else {
+        setMsg("Invalid or expired reset link.");
+        setStage("done");
       }
     })();
-  }, [code]);
+  }, []);
 
+  // 2️⃣ Submit new password
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMsg(null);
     if (newPwd !== confirmPwd) {
-      return setMsg("Passwords do not match.");
+      setMsg("Passwords do not match.");
+      return;
     }
     const { error } = await supabase.auth.updateUser({ password: newPwd });
     if (error) {
       setMsg(error.message);
     } else {
-      setMsg("Password updated! Redirecting…");
+      setMsg("Password updated! Redirecting to login…");
       setStage("done");
       setTimeout(() => router.push("/auth/login"), 2000);
     }
   };
 
-  if (stage === "verifying") return <p className="text-center mt-20">Verifying link…</p>;
-  if (stage === "done")
+  if (stage === "loading") {
+    return <p className="text-center mt-20">Verifying reset link…</p>;
+  }
+
+  if (stage === "done") {
     return (
       <div className="max-w-md mx-auto my-20 p-8 bg-white shadow rounded text-center">
-        <p className={`font-semibold ${msg?.includes("updated") ? "text-green-600" : "text-red-600"}`}>
+        <p className={`font-semibold ${msg.includes("updated") ? "text-green-600" : "text-red-600"}`}>
           {msg}
         </p>
       </div>
     );
+  }
 
-  // form
+  // stage === "form"
   return (
     <div className="max-w-md mx-auto my-20 p-8 bg-white shadow rounded">
       <h2 className="text-2xl font-bold mb-4 text-center">Reset Password</h2>
