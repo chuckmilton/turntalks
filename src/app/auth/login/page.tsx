@@ -1,22 +1,6 @@
 // app/auth/login/page.tsx
 "use client";
 
-// precise typing for Google Identity Services
-declare const google: {
-  accounts?: {
-    id?: {
-      initialize(opts: {
-        client_id: string;
-        callback: (response: { credential: string }) => void;
-      }): void;
-      renderButton(
-        container: HTMLElement,
-        opts: { theme: "outline"; size: "large" }
-      ): void;
-    };
-  };
-};
-
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
@@ -24,9 +8,30 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import useRedirectIfAuth from "@/hooks/useRedirectIfAuth";
 
+// Tell TypeScript about window.google
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          initialize(opts: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+          }): void;
+          renderButton(
+            container: HTMLElement,
+            opts: { theme: "outline"; size: "large" }
+          ): void;
+        };
+      };
+    };
+  }
+}
+
 export default function LoginPage() {
   useRedirectIfAuth();
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -53,7 +58,7 @@ export default function LoginPage() {
 
   // Google Identity Services
   useEffect(() => {
-    const g = google;
+    const g = typeof window !== "undefined" ? window.google : undefined;
     if (g?.accounts?.id) {
       g.accounts.id.initialize({
         client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
@@ -66,7 +71,7 @@ export default function LoginPage() {
     }
   }, [handleGoogleResponse]);
 
-  // Standard login
+  // standard email/password login
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage("");
@@ -81,7 +86,7 @@ export default function LoginPage() {
     }
   };
 
-  // Forgot Password
+  // forgot password
   const handleForgotPassword = async () => {
     setErrorMessage("");
     setResetMessage("");

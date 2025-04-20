@@ -1,28 +1,32 @@
 // app/auth/signup/page.tsx
 "use client";
 
-// precise typing for Google Identity Services
-declare const google: {
-  accounts?: {
-    id?: {
-      initialize(options: {
-        client_id: string;
-        callback: (response: { credential: string }) => void;
-      }): void;
-      renderButton(
-        container: HTMLElement,
-        options: { theme: "outline"; size: "large" }
-      ): void;
-    };
-  };
-};
-
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import useRedirectIfAuth from "@/hooks/useRedirectIfAuth";
+
+// Tell TypeScript about window.google
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          initialize(opts: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+          }): void;
+          renderButton(
+            container: HTMLElement,
+            opts: { theme: "outline"; size: "large" }
+          ): void;
+        };
+      };
+    };
+  }
+}
 
 export default function SignupPage() {
   useRedirectIfAuth();
@@ -35,7 +39,7 @@ export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // 1️⃣ Memoized Google callback
+  // memoized Google callback
   const handleGoogleResponse = useCallback(
     async (response: { credential: string }) => {
       setErrorMessage("");
@@ -54,22 +58,22 @@ export default function SignupPage() {
     [router]
   );
 
-  // 2️⃣ Initialize Google Sign‑Up button
+  // Google Identity Services
   useEffect(() => {
-    const g = google;
+    const g = typeof window !== "undefined" ? window.google : undefined;
     if (g?.accounts?.id) {
       g.accounts.id.initialize({
         client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
         callback: handleGoogleResponse,
       });
       g.accounts.id.renderButton(
-        document.getElementById("google-signup")!,
+        document.getElementById("google-signup") as HTMLElement,
         { theme: "outline", size: "large" }
       );
     }
   }, [handleGoogleResponse]);
 
-  // 3️⃣ Email/Password sign‑up
+  // email/password sign‑up
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage("");
@@ -109,9 +113,7 @@ export default function SignupPage() {
         <script src="https://accounts.google.com/gsi/client" async defer />
       </Head>
       <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
-        <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">
-          Sign Up
-        </h2>
+        <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
 
         {!!errorMessage && (
           <div className="mb-6 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
@@ -124,16 +126,14 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* Google Sign‑Up Button Container */}
+        {/* Google Sign‑Up */}
         <div id="google-signup" className="mb-6 flex justify-center" />
 
         {/* Email/Password Form */}
         {!successMessage && (
           <form onSubmit={handleSignup}>
             <label className="block mb-4">
-              <span className="block text-gray-700 font-semibold mb-1">
-                Display Name:
-              </span>
+              <span className="block text-gray-700 font-semibold mb-1">Display Name:</span>
               <input
                 type="text"
                 className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -144,9 +144,7 @@ export default function SignupPage() {
             </label>
 
             <label className="block mb-4">
-              <span className="block text-gray-700 font-semibold mb-1">
-                Email:
-              </span>
+              <span className="block text-gray-700 font-semibold mb-1">Email:</span>
               <input
                 type="email"
                 className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -157,9 +155,7 @@ export default function SignupPage() {
             </label>
 
             <label className="block mb-4">
-              <span className="block text-gray-700 font-semibold mb-1">
-                Password:
-              </span>
+              <span className="block text-gray-700 font-semibold mb-1">Password:</span>
               <input
                 type="password"
                 className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -170,9 +166,7 @@ export default function SignupPage() {
             </label>
 
             <label className="block mb-6">
-              <span className="block text-gray-700 font-semibold mb-1">
-                Confirm Password:
-              </span>
+              <span className="block text-gray-700 font-semibold mb-1">Confirm Password:</span>
               <input
                 type="password"
                 className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -193,10 +187,7 @@ export default function SignupPage() {
 
         <p className="mt-6 text-center text-gray-600">
           Already have an account?{" "}
-          <Link
-            href="/auth/login"
-            className="text-pink-600 hover:text-pink-700 font-bold"
-          >
+          <Link href="/auth/login" className="text-pink-600 hover:text-pink-700 font-bold">
             Login
           </Link>
         </p>
