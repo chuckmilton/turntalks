@@ -1,4 +1,4 @@
-// app/auth/reset/page.tsx
+export const dynamic = "force-dynamic";
 "use client";
 
 import { useState, useEffect } from "react";
@@ -15,7 +15,6 @@ export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // 1️⃣ On mount, exchange the code for a session
   useEffect(() => {
     if (!code) {
       setMessage("Invalid or missing link.");
@@ -28,13 +27,11 @@ export default function ResetPasswordPage() {
         setMessage(error.message);
         setStage("done");
       } else {
-        // session is now set in storage—show the form
         setStage("form");
       }
     })();
   }, [code]);
 
-  // 2️⃣ Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
@@ -54,7 +51,6 @@ export default function ResetPasswordPage() {
     }
   };
 
-  // 3️⃣ Render based on stage
   if (stage === "verifying") {
     return <p className="text-center mt-20">Verifying link…</p>;
   }
@@ -71,7 +67,6 @@ export default function ResetPasswordPage() {
     );
   }
 
-  // stage === "form"
   return (
     <div className="max-w-md mx-auto my-20 p-8 bg-white shadow rounded">
       <h2 className="text-2xl font-bold mb-4 text-center">Reset Password</h2>
