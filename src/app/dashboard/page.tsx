@@ -144,11 +144,11 @@ export default function DashboardPage() {
         className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-2xl p-8 mb-10 text-white flex flex-col sm:flex-row items-center justify-between"
       >
         <div>
-          <h2 className="text-3xl font-bold">
-            {user?.user_metadata?.display_name
-              ? `Hello, ${user.user_metadata.display_name}!`
-              : "Welcome!"}
-          </h2>
+        <h2 className="text-3xl font-bold">
+          {user
+            ? `Hello, ${user.user_metadata?.display_name || user.user_metadata?.name}!`
+            : "Welcome!"}
+        </h2>
           <p className="mt-2 text-lg">Your sessions at a glance.</p>
         </div>
         <div className="flex space-x-4 mt-4 sm:mt-0">
