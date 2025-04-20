@@ -110,7 +110,7 @@ export default function SignupPage() {
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
 
       <div className="max-w-lg mx-auto p-10 bg-white shadow rounded">
-        <h2 className="text-2xl font-bold mb-6 text-center">Sign Up</h2>
+        <h2 className="text-4xl font-bold mb-6 text-center">Sign Up</h2>
 
         {errorMessage && <div className="mb-4 p-3 bg-red-100 text-red-600">{errorMessage}</div>}
         {successMessage && <div className="mb-4 p-3 bg-green-100 text-green-600">{successMessage}</div>}
