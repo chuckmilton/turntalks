@@ -15,32 +15,41 @@ export async function POST(req: NextRequest) {
     if (!BASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !NEXT_PUBLIC_SITE_URL) {
       throw new Error("Missing Supabase or site URL config");
     }
+
     const { email } = await req.json();
     if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Email is required" },
+        { status: 400 }
+      );
     }
 
-    // 1️⃣ Generate the recovery link…
-    const linkRes = await fetch(`${BASE_URL}/auth/v1/admin/generate_link`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        type: "recovery",
-        email,
-        redirectTo: `${NEXT_PUBLIC_SITE_URL}/auth/reset`,
-      }),
-    });
+    // 1️⃣ Generate the recovery link
+    const linkRes = await fetch(
+      `${BASE_URL}/auth/v1/admin/generate_link`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "recovery",
+          email,
+          redirectTo: `${NEXT_PUBLIC_SITE_URL}/auth/reset`,
+        }),
+      }
+    );
     const linkJson = await linkRes.json().catch(() => ({}));
     if (!linkRes.ok || !linkJson.action_link) {
-      throw new Error(linkJson?.error_description || "Failed to generate reset link");
+      throw new Error(
+        linkJson?.error_description || "Failed to generate reset link"
+      );
     }
     const resetLink: string = linkJson.action_link;
 
-    // 2️⃣ Verify App Password is present
+    // 2️⃣ Ensure App Password is set
     if (!USER_EMAIL || !GMAIL_APP_PASSWORD) {
       throw new Error("Missing USER_EMAIL or GMAIL_APP_PASSWORD");
     }
@@ -54,24 +63,26 @@ export async function POST(req: NextRequest) {
     });
     await transporter.verify();
 
-    // 4️⃣ Send the email
-    const info = await transporter.sendMail({
-        from: `TurnTalks <${USER_EMAIL}>`,
-        to: email,
-        subject: "TurnTalks Password Reset",
-        text: `You requested a password reset for TurnTalks.\n\nOpen this link to reset your password:\n\n${resetLink}\n\nIf you didn’t request this, ignore it.`,
-        html: `
-          <p>You requested a password reset.</p>
-          <p><a href="${resetLink}">Reset your password here</a></p>
-          <p>If you didn’t request this, you can ignore this email.</p>
-        `,
-      });   
+    // 4️⃣ Send the email (no unused `info` variable)
+    await transporter.sendMail({
+      from: `TurnTalks <${USER_EMAIL}>`,
+      to: email,
+      subject: "TurnTalks Password Reset",
+      text: `You requested a password reset for TurnTalks.\n\nOpen this link to reset your password:\n\n${resetLink}\n\nIf you didn’t request this, ignore it.`,
+      html: `
+        <p>You requested a password reset.</p>
+        <p><a href="${resetLink}">Reset your password here</a></p>
+        <p>If you didn’t request this, you can ignore this email.</p>
+      `,
+    });
 
     return NextResponse.json({ message: "Reset email sent" });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("forgot-password error:", err);
+    const message =
+      err instanceof Error ? err.message : "Internal Server Error";
     return NextResponse.json(
-      { error: err.message || "Internal Server Error" },
+      { error: message },
       { status: 500 }
     );
   }

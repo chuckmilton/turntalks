@@ -1,13 +1,17 @@
 "use client";
-// declare the Google object
-declare const google: any;
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import useRedirectIfAuth from "@/hooks/useRedirectIfAuth";
+
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
 
 export default function LoginPage() {
   useRedirectIfAuth();
@@ -17,35 +21,38 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [resetMessage, setResetMessage] = useState("");
 
-  // Google Identity Services
-  useEffect(() => {
-    if (typeof google !== "undefined" && google.accounts?.id) {
-      google.accounts.id.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-        callback: handleGoogleResponse,
-      });
-      google.accounts.id.renderButton(
-        document.getElementById("google-signin")!,
-        { theme: "outline", size: "large" }
-      );
-    }
-  }, []);
-
-  async function handleGoogleResponse(response: { credential: string }) {
+  // memoize so we can safely add it as a dependency
+  const handleGoogleResponse = useCallback(async (response: { credential: string }) => {
     setErrorMessage("");
     try {
-      const { data, error } = await supabase.auth.signInWithIdToken({
+      const { error } = await supabase.auth.signInWithIdToken({
         provider: "google",
         token: response.credential,
       });
       if (error) throw error;
       router.push("/dashboard");
-    } catch (err: any) {
-      setErrorMessage(err.error_description || err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred";
+      setErrorMessage(msg);
     }
-  }
+  }, [router]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // Google Identity Services
+  useEffect(() => {
+    const g = window.google;
+    if (g?.accounts?.id) {
+      g.accounts.id.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+        callback: handleGoogleResponse,
+      });
+      g.accounts.id.renderButton(
+        document.getElementById("google-signin")!,
+        { theme: "outline", size: "large" }
+      );
+    }
+  }, [handleGoogleResponse]);
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage("");
     setResetMessage("");
@@ -53,12 +60,12 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       router.push("/dashboard");
-    } catch (err: any) {
-      setErrorMessage(err.error_description || err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred";
+      setErrorMessage(msg);
     }
   };
 
-  // ← UPDATED: call our own API route instead of supabase.resetPasswordForEmail
   const handleForgotPassword = async () => {
     setErrorMessage("");
     setResetMessage("");
@@ -72,34 +79,36 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || res.statusText);
       setResetMessage("Reset link sent! Check your inbox.");
-    } catch (err: any) {
-      setErrorMessage(err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred";
+      setErrorMessage(msg);
     }
   };
 
   return (
     <>
       <Head>
-        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script src="https://accounts.google.com/gsi/client" async defer />
       </Head>
       <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
         <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Login</h2>
 
-        {errorMessage && (
+        {!!errorMessage && (
           <div className="mb-6 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
             {errorMessage}
           </div>
         )}
-        {resetMessage && (
+        {!!resetMessage && (
           <div className="mb-6 p-3 bg-green-100 text-green-600 border border-green-200 rounded">
             {resetMessage}
           </div>
         )}
 
         {/* Google Sign‑In */}
-        <div id="google-signin" className="mb-6 flex justify-center"></div>
+        <div id="google-signin" className="mb-6 flex justify-center" />
 
         {/* Email/Password Form */}
         <form onSubmit={handleLogin}>
@@ -144,11 +153,8 @@ export default function LoginPage() {
         </p>
 
         <p className="mt-6 text-center text-gray-600">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/auth/signup"
-            className="text-pink-600 hover:text-pink-700 font-bold"
-          >
+          Don’t have an account?{" "}
+          <Link href="/auth/signup" className="text-pink-600 hover:text-pink-700 font-bold">
             Sign Up
           </Link>
         </p>

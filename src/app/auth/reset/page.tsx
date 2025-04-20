@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
       return;
     }
     (async () => {
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
         setMessage(error.message);
         setStage("done");
