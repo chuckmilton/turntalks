@@ -47,13 +47,21 @@ export default function ClientReset() {
   };
 
   if (stage === "loading") {
-    return <p className="text-center mt-20">Verifying reset link…</p>;
+    return (
+      <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
+        <p className="text-center text-gray-700">Verifying reset link…</p>
+      </div>
+    );
   }
 
   if (stage === "done") {
     return (
-      <div className="max-w-md mx-auto my-20 p-8 bg-white shadow rounded text-center">
-        <p className={`font-semibold ${msg.includes("updated") ? "text-green-600" : "text-red-600"}`}>
+      <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp text-center">
+        <p
+          className={`font-semibold ${
+            msg.includes("updated") ? "text-green-600" : "text-red-600"
+          }`}
+        >
           {msg}
         </p>
       </div>
@@ -62,25 +70,37 @@ export default function ClientReset() {
 
   // stage === "form"
   return (
-    <div className="max-w-md mx-auto my-20 p-8 bg-white shadow rounded">
-      <h2 className="text-2xl font-bold mb-4 text-center">Reset Password</h2>
-      {msg && <p className="mb-4 text-center text-red-600">{msg}</p>}
+    <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
+      <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">
+        Reset Password
+      </h2>
+
+      {msg && (
+        <div className="mb-6 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
+          {msg}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <label className="block mb-4">
-          <span>New Password</span>
+          <span className="block text-gray-700 font-semibold mb-1">
+            New Password:
+          </span>
           <input
             type="password"
-            className="w-full border p-2 rounded mt-1"
+            className="w-full border border-gray-300 rounded-md p-3 mt-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
             value={newPwd}
             onChange={(e) => setNewPwd(e.target.value)}
             required
           />
         </label>
         <label className="block mb-6">
-          <span>Confirm Password</span>
+          <span className="block text-gray-700 font-semibold mb-1">
+            Confirm Password:
+          </span>
           <input
             type="password"
-            className="w-full border p-2 rounded mt-1"
+            className="w-full border border-gray-300 rounded-md p-3 mt-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
             value={confirmPwd}
             onChange={(e) => setConfirmPwd(e.target.value)}
             required
@@ -88,7 +108,7 @@ export default function ClientReset() {
         </label>
         <button
           type="submit"
-          className="w-full bg-pink-600 text-white py-2 rounded hover:bg-pink-700"
+          className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
         >
           Update Password
         </button>

@@ -1,4 +1,3 @@
-// app/auth/signup/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -62,7 +61,7 @@ export default function SignupPage() {
     [router]
   );
 
-  // 2️⃣ Init GSI once
+  // Init GSI once
   useEffect(() => {
     const interval = setInterval(() => {
       if (window.google?.accounts?.id) {
@@ -81,7 +80,7 @@ export default function SignupPage() {
     return () => clearInterval(interval);
   }, [handleGoogleResponse]);
 
-  // 3️⃣ Email/password signup
+  // Email/password signup
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -100,7 +99,11 @@ export default function SignupPage() {
       setSuccess("Confirmation sent—check your inbox.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Signup failed";
-      setError(msg.includes("duplicate") ? "Email already registered. Please log in." : msg);
+      setError(
+        msg.toLowerCase().includes("duplicate")
+          ? "Email already registered. Please log in instead."
+          : msg
+      );
     }
   };
 
@@ -109,68 +112,78 @@ export default function SignupPage() {
       {/* Load Google Identity Services */}
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
 
-      <div className="max-w-lg mx-auto p-10 bg-white shadow rounded">
-        <h2 className="text-4xl font-bold mb-6 text-center">Sign Up</h2>
+      <div className="w-full max-w-lg mx-auto my-10 p-10 bg-white shadow-lg rounded-xl animate-fadeInUp">
+        <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
 
-        {errorMessage && <div className="mb-4 p-3 bg-red-100 text-red-600">{errorMessage}</div>}
-        {successMessage && <div className="mb-4 p-3 bg-green-100 text-green-600">{successMessage}</div>}
+        {errorMessage && (
+          <div className="mb-6 p-3 bg-red-100 text-red-600 border border-red-200 rounded">
+            {errorMessage}
+          </div>
+        )}
+        {successMessage && (
+          <div className="mb-6 p-3 bg-green-100 text-green-600 border border-green-200 rounded">
+            {successMessage}
+          </div>
+        )}
 
         {/* Google Sign‑Up Button */}
-        <div id="google-signup" className="mb-6 flex justify-center"></div>
-
-        {/* OR */}
-        <div className="text-center mb-6 text-gray-500">or sign up with email</div>
+        <div id="google-signup" className="mb-6 flex justify-center" />
 
         {/* Email/Password Form */}
-        <form onSubmit={handleSignup}>
-          <label className="block mb-4">
-            <span>Display Name</span>
-            <input
-              type="text"
-              className="w-full border p-2 rounded mt-1"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              required
-            />
-          </label>
-          <label className="block mb-4">
-            <span>Email</span>
-            <input
-              type="email"
-              className="w-full border p-2 rounded mt-1"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </label>
-          <label className="block mb-4">
-            <span>Password</span>
-            <input
-              type="password"
-              className="w-full border p-2 rounded mt-1"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </label>
-          <label className="block mb-6">
-            <span>Confirm Password</span>
-            <input
-              type="password"
-              className="w-full border p-2 rounded mt-1"
-              value={confirmPassword}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-            />
-          </label>
-          <button className="w-full py-2 bg-pink-600 text-white rounded hover:bg-pink-700">
-            Sign Up
-          </button>
-        </form>
+        {!successMessage && (
+          <form onSubmit={handleSignup}>
+            <label className="block mb-4">
+              <span className="block text-gray-700 font-semibold mb-1">Display Name:</span>
+              <input
+                type="text"
+                className="w-full border border-gray-300 rounded-md p-3 mt-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                required
+              />
+            </label>
+            <label className="block mb-4">
+              <span className="block text-gray-700 font-semibold mb-1">Email:</span>
+              <input
+                type="email"
+                className="w-full border border-gray-300 rounded-md p-3 mt-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </label>
+            <label className="block mb-4">
+              <span className="block text-gray-700 font-semibold mb-1">Password:</span>
+              <input
+                type="password"
+                className="w-full border border-gray-300 rounded-md p-3 mt-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </label>
+            <label className="block mb-6">
+              <span className="block text-gray-700 font-semibold mb-1">Confirm Password:</span>
+              <input
+                type="password"
+                className="w-full border border-gray-300 rounded-md p-3 mt-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                value={confirmPassword}
+                onChange={(e) => setConfirm(e.target.value)}
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-md shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+            >
+              Sign Up
+            </button>
+          </form>
+        )}
 
-        <p className="mt-6 text-center">
-          Already have an account?{" "}
-          <Link href="/auth/login" className="text-pink-600 font-bold">
+        <p className="mt-6 text-center text-gray-600">
+          Already have an account?{' '}
+          <Link href="/auth/login" className="text-pink-600 hover:text-pink-700 font-bold">
             Login
           </Link>
         </p>
